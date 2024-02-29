@@ -1,0 +1,17 @@
+G:\Git Projects\ModHearth\ModHearth\bin\Debug\net7.0-windows\ModHearth.exe
+G:\Git Projects\ModHearth\ModHearth\bin\Debug\net7.0-windows\ModHearth.deps.json
+G:\Git Projects\ModHearth\ModHearth\bin\Debug\net7.0-windows\ModHearth.runtimeconfig.json
+G:\Git Projects\ModHearth\ModHearth\bin\Debug\net7.0-windows\ModHearth.dll
+G:\Git Projects\ModHearth\ModHearth\bin\Debug\net7.0-windows\ModHearth.pdb
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.Form1.resources
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.csproj.GenerateResource.cache
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.GeneratedMSBuildEditorConfig.editorconfig
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.AssemblyInfoInputs.cache
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.AssemblyInfo.cs
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.csproj.CoreCompileInputs.cache
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.dll
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\refint\ModHearth.dll
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.pdb
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.genruntimeconfig.cache
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ref\ModHearth.dll
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.Resource1.resources
