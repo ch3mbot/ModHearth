@@ -30,6 +30,8 @@ namespace ModHearth
 
         public bool MissingVersion = false;
 
+        public Control matchingControl;
+
         public ModReference(string ID, string numericVersion, string displayedVersion, string earliestCompatibleNumericVersion, string earliestCompatibleDisplayedVersion, string author, string name, string description, string steamName, string steamDescription, string steamID, string path)
         {
             this.ID = ID;

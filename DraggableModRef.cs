@@ -22,14 +22,19 @@ namespace ModHearth
         private bool inPanel;
 
         public ModReference modReference;
+        private Label label;
 
-        public DraggableModRef(ModReference modref, Panel parent, Form1 form)
+        private bool initialized;
+
+        public DraggableModRef(ModReference modref, Form1 form)
         {
+            //SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.Opaque | ControlStyles.UserPaint, true);
+
             this.BackColor = Style.modRefColor;
             this.BorderStyle = Style.modRefBorder;
 
             //#fix# name or ID?
-            Label label = new Label();
+             label = new Label();
             label.Text = modref.name + " " + modref.displayedVersion;
             label.AutoSize = false;
             label.AutoEllipsis = true;
@@ -48,9 +53,7 @@ namespace ModHearth
             //i hate gui
             //this.Dock = DockStyle.Top;
             //this.AutoSize = true;
-            this.Width = parent.Width - Margin.Left - Margin.Right - SystemInformation.VerticalScrollBarWidth;
-            label.Width = this.Width;
-            this.Height = Style.modRefHeight;
+
             //this.Anchor = AnchorStyles.Top;
             //this.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             //this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
@@ -60,8 +63,19 @@ namespace ModHearth
             this.MouseUp += DraggableModRef_MouseUp;
 
             this.form = form;
+
+            initialized = false;
         }
 
+        public void Initialize(Control parent) 
+        {
+            if(initialized)
+                return;
+            initialized = true; 
+            this.Width = parent.Width - Margin.Left - Margin.Right - SystemInformation.VerticalScrollBarWidth;
+            label.Width = this.Width;
+            this.Height = Style.modRefHeight;
+        }
 
         private void DraggableModRef_MouseDown(object sender, MouseEventArgs e)
         {

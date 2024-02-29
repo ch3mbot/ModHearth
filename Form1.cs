@@ -28,9 +28,16 @@ namespace ModHearth
         public int currentModlistIndex;
         public bool visualChangesMadeFlag = false;
 
+        private Button saveButton, unchangeButton, reloadButton;
+
+        private Dictionary<string, DraggableModRef> DragModRefMap;
+
+        private TextBox leftSearch, rightSearch;
+
         private void RefreshSizeProperly()
         {
             Console.WriteLine("Form refreshed");
+            //area math
             int w = this.ClientSize.Width; int h = this.ClientSize.Height;
             int availableMidSpace = w - 2 * Style.largeBorder - 3 * Style.smallBorder - Style.rightPanelW - Style.leftPanelW;
             int panelW = availableMidSpace / 2;
@@ -38,6 +45,7 @@ namespace ModHearth
             int availableHeight = h - 2 * Style.largeBorder;
             int rightPanelX = panelLX + availableMidSpace + Style.smallBorder;
 
+            //mod list columns
             leftModlistPanel.Width = panelW;
             leftModlistPanel.Height = availableHeight;
             rightModlistPanel.Width = panelW;
@@ -47,23 +55,107 @@ namespace ModHearth
             leftModlistPanel.BackColor = Color.Blue;
             rightModlistPanel.BackColor = Color.Blue;
 
+            //right panel
+            int btnWidth = (Style.rightPanelW - 2 * Style.smallBorder) / 3;
+            int btnHeight = btnWidth;
+            saveButton.Size = unchangeButton.Size = reloadButton.Size = new Size(btnWidth, btnHeight);
+            saveButton.Location = new Point(rightPanelX, Style.largeBorder);
+            unchangeButton.Location = new Point(rightPanelX + btnWidth + Style.smallBorder, Style.largeBorder);
+            reloadButton.Location = new Point(rightPanelX + 2 * (btnWidth + Style.smallBorder), Style.largeBorder);
 
             modlistComboBox.Width = Style.rightPanelW;
-            modlistComboBox.Location = new Point(rightPanelX, Style.largeBorder);
+            modlistComboBox.Location = new Point(rightPanelX, Style.smallBorder + btnHeight + Style.largeBorder);
+
+            //for some reason columns show up blank initially
+            RefreshModColumns();
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            AddMissingElements();
+            GenerateDraggableModRefs();
             RefreshSizeProperly();
 
             //set which modlist is enabled right now
-            foreach (DFHackModlist dfhackModlist in manager.modlists)
+            foreach (DFHackModlist dfhackModlist in manager.actualModLists)
             {
                 modlistComboBox.Items.Add(dfhackModlist.name);
             }
             modlistComboBox.SelectedIndex = manager.selectedModlistIndex;
 
+
+
             Console.WriteLine("Form loaded");
+        }
+
+        private void GenerateDraggableModRefs() 
+        {
+            DragModRefMap = new Dictionary<string, DraggableModRef>();
+            foreach(string key in manager.allMods.Keys) 
+            {
+                ModReference modref = manager.allMods[key];
+                DraggableModRef newDragRef = new DraggableModRef(modref, this);
+                modref.matchingControl = newDragRef;
+                DragModRefMap.Add(modref.ToDFHackMod().ToString(), newDragRef);
+            }
+        }
+
+        private void AddMissingElements() 
+        {
+            saveButton = new Button();
+            saveButton.Text = "S";
+            saveButton.Click += saveButton_Clicked;
+            
+            unchangeButton = new Button();
+            unchangeButton.Text = "U";
+            unchangeButton.Click += unchangeButton_Clicked;
+            unchangeButton.Enabled = false;
+
+            reloadButton = new Button();
+            reloadButton.Text = "R";
+            reloadButton.Click += reloadButton_Clicked;
+
+            Controls.Add(saveButton);
+            Controls.Add(unchangeButton);
+            Controls.Add(reloadButton);
+
+            leftSearch = new TextBox();
+            rightSearch = new TextBox();
+
+            leftSearch.TextChanged += leftSearch_changed;
+            rightSearch.TextChanged += rightSearch_changed;
+        }
+
+        private void leftSearch_changed(object sender, EventArgs e) 
+        {
+
+        }
+
+        private void rightSearch_changed(object sender, EventArgs e) 
+        {
+
+        }
+
+        private void saveButton_Clicked(object sender, EventArgs e) 
+        {
+            SaveChanges();
+        }
+        private void unchangeButton_Clicked(object sender, EventArgs e) 
+        {
+            if(ResetChangesPrompt("Are you sure you want to reset changes?"))
+            {
+                DiscardChanges();
+                RefreshModColumns();
+                //manager.SetSelectedModlist(manager.selectedModlistIndex);
+            }
+            else 
+            {
+                Console.WriteLine("!!changes left intact");
+            }
+        }
+        private void reloadButton_Clicked(object sender, EventArgs e) 
+        {
+
         }
 
         private void pictureBox1_Click(object sender, EventArgs e)
@@ -76,13 +168,25 @@ namespace ModHearth
 
         }
 
-        private bool UnsavedChangesPrompt(string message) 
+        private bool ResetChangesPrompt(string questionMessage) 
+        {
+            DialogResult result = MessageBox.Show($"You have unsaved changes to {manager.lastSelectedModlist.name}. {questionMessage}", "Confirmation", MessageBoxButtons.YesNo);
+
+            if (result == DialogResult.Yes)
+            {
+                return true;
+            }
+            return false;
+            
+        }
+
+        private bool UnsavedChangesPrompt(string questionMessage) 
         {            
             if (!manager.ModpackAltered)
                 return true;
 
             //ask to save changes first
-            DialogResult result = MessageBox.Show($"You have unsaved changes to {manager.selectedModlist.name}. Do you want to save before {message}?", "Confirmation", MessageBoxButtons.YesNoCancel);
+            DialogResult result = MessageBox.Show($"You have unsaved changes to {manager.lastSelectedModlist.name}. {questionMessage}", "Confirmation", MessageBoxButtons.YesNoCancel);
 
             if (result == DialogResult.Yes)
             {
@@ -90,18 +194,17 @@ namespace ModHearth
                 SaveChanges();
                 return true;
             }
-            else if (result == DialogResult.No) 
+            if (result == DialogResult.No) 
             {
                 DiscardChanges();
                 return true;
             }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine("Undoing action");
-                Console.ForegroundColor = ConsoleColor.White;
-                return false;
-            }
+
+            //they hit cancel, so the action can't procees
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("Undoing action");
+            Console.ForegroundColor = ConsoleColor.White;
+            return false;
         }
 
         public void SaveChanges() 
@@ -120,7 +223,7 @@ namespace ModHearth
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("Discarding changes");
             Console.ForegroundColor = ConsoleColor.White;
-            manager.ResetModlist();
+            manager.SetSelectedModlist(manager.selectedModlistIndex);
 
             //remove unsaved changes star
             ResetChanges();
@@ -131,7 +234,8 @@ namespace ModHearth
             manager.ModpackAltered = false;
             visualChangesMadeFlag = false;
             manualIndexChangeFlag = true;
-            modlistComboBox.Items[currentModlistIndex] = manager.selectedModlist.name;
+            unchangeButton.Enabled = false;
+            modlistComboBox.Items[currentModlistIndex] = manager.lastSelectedModlist.name;
         }
 
         public void ShowUnsavedChanges() 
@@ -141,6 +245,7 @@ namespace ModHearth
             {
                 visualChangesMadeFlag = true;
                 manualIndexChangeFlag = true;
+                unchangeButton.Enabled = true;
                 modlistComboBox.Items[currentModlistIndex] += "*";
             }
         }
@@ -154,7 +259,7 @@ namespace ModHearth
                 return;
             }
             //if we have unsaved changes, and the prompt says we can't continue, then reset index
-            if(!UnsavedChangesPrompt("Changing modpack")) 
+            if(!UnsavedChangesPrompt("Do you want to save before changing modpack?")) 
             {
                 manualIndexChangeFlag = true;
                 modlistComboBox.SelectedIndex = currentModlistIndex;
@@ -169,17 +274,26 @@ namespace ModHearth
 
         private void RefreshModColumns()
         {
-            RefreshModColumn(leftModlistPanel, new List<ModReference>(manager.disabledMods));
-            RefreshModColumn(rightModlistPanel, manager.enabledMods);
+            RefreshModColumn(leftModlistPanel, new List<ModReference>(manager.disabledMods), true);
+            RefreshModColumn(rightModlistPanel, manager.enabledMods, false);
         }
 
-        private void RefreshModColumn(Panel col, List<ModReference> modrefList)
+        private void RefreshModColumn(VerticalFlowPanel col, List<ModReference> modrefList, bool left)
         {
-            col.Controls.Clear();
+            if (col.initialized)
+            {
+                col.UpdateVisibleOrder(!left);
+                return;
+            }
+            List<Control> conts = new List<Control>();
             foreach (ModReference modref in modrefList)
             {
-                col.Controls.Add(new DraggableModRef(modref, col, this));
+                DraggableModRef selected = DragModRefMap[modref.ToDFHackMod().ToString()];
+                selected.Initialize(col);
+                conts.Add(selected);
             }
+            col.Controls.AddRange(conts.ToArray());
+            col.ResumeLayout(true);
         }
 
 

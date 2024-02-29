@@ -33,12 +33,11 @@ namespace ModHearth
         public static string configPath = "config.json";
         public static string modlistPath = "modlists/";
 
-        public List<DFHackModlist> savedModlists;
-        public List<DFHackModlist> modlists;
+        public List<DFHackModlist> actualModLists;
 
         public Form1 form;
 
-        public DFHackModlist selectedModlist => modlists[selectedModlistIndex];
+        public DFHackModlist lastSelectedModlist => actualModLists[selectedModlistIndex];
         public int selectedModlistIndex;
 
         public bool ModpackAltered = false;
@@ -121,7 +120,7 @@ namespace ModHearth
 
             enabledMods = new List<ModReference>();
             disabledMods = new HashSet<ModReference>();
-            foreach (DFHackMod dfhmod in selectedModlist.modlist)
+            foreach (DFHackMod dfhmod in lastSelectedModlist.modlist)
             {
                 if(!allMods.ContainsKey(dfhmod.ToString()))
                 {
@@ -205,21 +204,18 @@ namespace ModHearth
         {
             string dfHackModlistPath = Path.Combine(config.DFFolderPath, @"dfhack-config\mod-manager.json");
             string dfHackModlistJson = File.ReadAllText(dfHackModlistPath);
-            modlists = new List<DFHackModlist>(JsonSerializer.Deserialize<List<DFHackModlist>>(dfHackModlistJson));
-            savedModlists = new List<DFHackModlist>();
+            actualModLists = new List<DFHackModlist>(JsonSerializer.Deserialize<List<DFHackModlist>>(dfHackModlistJson));
 
             Console.WriteLine();
             Console.WriteLine("Found modlists: ");
-            for(int i = 0; i < modlists.Count; i++) 
+            for(int i = 0; i < actualModLists.Count; i++) 
             {
-                DFHackModlist modlist = modlists[i];
+                DFHackModlist modlist = actualModLists[i];
                 Console.WriteLine("   Name: " + modlist.name);
                 Console.WriteLine("   Default: " + modlist.@default);
-                Console.WriteLine("   Mods count: " + modlist.modlist.Length);
+                Console.WriteLine("   Mods count: " + modlist.modlist.Count);
                 Console.WriteLine();
 
-                //make a copy in savedModLists
-                savedModlists.Add(DFHackModlist.copy(modlist));
                 if(modlist.@default)
                 {
                     SetSelectedModlist(i);
@@ -301,21 +297,17 @@ namespace ModHearth
         public void SaveModlist() 
         {
             //set the saved list to a copy of this one
-            savedModlists[selectedModlistIndex] = DFHackModlist.copy(modlists[selectedModlistIndex]);
+            List<DFHackMod> newlist = new List<DFHackMod>();
+            enabledMods.ForEach((x) => newlist.Add(x.ToDFHackMod()));
+            lastSelectedModlist.modlist = newlist;
             
             string dfHackModlistPath = Path.Combine(config.DFFolderPath, @"dfhack-config\mod-manager.json");
             JsonSerializerOptions options = new JsonSerializerOptions
             {
                 WriteIndented = true // Enable pretty formatting
             };
-            string modlistJson = JsonSerializer.Serialize(modlists, options);
+            string modlistJson = JsonSerializer.Serialize(actualModLists, options);
             File.WriteAllText(dfHackModlistPath, modlistJson);
-        }
-
-        public void ResetModlist() 
-        {
-            //set this modlist to a copy of saved one
-            modlists[selectedModlistIndex] = DFHackModlist.copy(savedModlists[selectedModlistIndex]);
         }
     }
 }
