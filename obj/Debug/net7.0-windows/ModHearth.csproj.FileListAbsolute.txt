@@ -15,3 +15,20 @@ G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.pdb
 G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.genruntimeconfig.cache
 G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ref\ModHearth.dll
 G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.Resource1.resources
+C:\Users\chembot\source\repos\ModHearth\bin\Debug\net7.0-windows\ModHearth.exe
+C:\Users\chembot\source\repos\ModHearth\bin\Debug\net7.0-windows\ModHearth.deps.json
+C:\Users\chembot\source\repos\ModHearth\bin\Debug\net7.0-windows\ModHearth.runtimeconfig.json
+C:\Users\chembot\source\repos\ModHearth\bin\Debug\net7.0-windows\ModHearth.dll
+C:\Users\chembot\source\repos\ModHearth\bin\Debug\net7.0-windows\ModHearth.pdb
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.Form1.resources
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.Resource1.resources
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.csproj.GenerateResource.cache
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.AssemblyInfoInputs.cache
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.AssemblyInfo.cs
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.csproj.CoreCompileInputs.cache
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.dll
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\refint\ModHearth.dll
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.pdb
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.genruntimeconfig.cache
+C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ref\ModHearth.dll

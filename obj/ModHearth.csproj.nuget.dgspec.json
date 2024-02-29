@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "G:\\Git Projects\\ModHearth\\ModHearth\\ModHearth.csproj": {}
+    "C:\\Users\\chembot\\source\\repos\\ModHearth\\ModHearth.csproj": {}
   },
   "projects": {
-    "G:\\Git Projects\\ModHearth\\ModHearth\\ModHearth.csproj": {
+    "C:\\Users\\chembot\\source\\repos\\ModHearth\\ModHearth.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "G:\\Git Projects\\ModHearth\\ModHearth\\ModHearth.csproj",
+        "projectUniqueName": "C:\\Users\\chembot\\source\\repos\\ModHearth\\ModHearth.csproj",
         "projectName": "ModHearth",
-        "projectPath": "G:\\Git Projects\\ModHearth\\ModHearth\\ModHearth.csproj",
-        "packagesPath": "C:\\Users\\dagan\\.nuget\\packages\\",
-        "outputPath": "G:\\Git Projects\\ModHearth\\ModHearth\\obj\\",
+        "projectPath": "C:\\Users\\chembot\\source\\repos\\ModHearth\\ModHearth.csproj",
+        "packagesPath": "C:\\Users\\chembot\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\chembot\\source\\repos\\ModHearth\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\dagan\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\chembot\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],

@@ -23,5 +23,14 @@ namespace ModHearth
         public bool @default { get; set; }
         public DFHackMod[] modlist { get; set; }
         public string name { get; set; }
+
+        public static DFHackModlist copy(DFHackModlist other) 
+        {
+            DFHackModlist newlist = new DFHackModlist();
+            newlist.@default = other.@default;
+            newlist.modlist = other.modlist.ToArray();
+            newlist.name = other.name;
+            return newlist;
+        }
     }
 }

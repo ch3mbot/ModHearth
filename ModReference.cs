@@ -28,6 +28,8 @@ namespace ModHearth
 
         public bool failed;
 
+        public bool MissingVersion = false;
+
         public ModReference(string ID, string numericVersion, string displayedVersion, string earliestCompatibleNumericVersion, string earliestCompatibleDisplayedVersion, string author, string name, string description, string steamName, string steamDescription, string steamID, string path)
         {
             this.ID = ID;
@@ -87,13 +89,16 @@ namespace ModHearth
 
             if (!numVerMatch.Success)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"   Non-Recoverable Mod Error: Mod version issue. Mod missing either numeric version. Path: {path}");
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                Console.WriteLine($"   Possibly-Recoverable Mod Error: Mod version issue. Mod missing either numeric version. Setting ver to . Path: {path}");
                 Console.ForegroundColor = ConsoleColor.White;
-                this.failed = true;
-                return;
+                numericVersion = "1";
+                MissingVersion = true;
+                //this.failed = true;
+                //return;
             }
-            numericVersion = numVerValue;
+            else 
+                numericVersion = numVerValue;
             if(!dispVerMatch.Success)
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;

@@ -33,13 +33,16 @@ namespace ModHearth
         public static string configPath = "config.json";
         public static string modlistPath = "modlists/";
 
+        public List<DFHackModlist> savedModlists;
         public List<DFHackModlist> modlists;
 
         public Form1 form;
 
-        private Dictionary<string, DFHackModlist> modlistMap;
+        public DFHackModlist selectedModlist => modlists[selectedModlistIndex];
+        public int selectedModlistIndex;
 
-        public DFHackModlist selectedModlist;
+        public bool ModpackAltered = false;
+
 
         public ModHearthManager(Form1 form)
         {
@@ -68,8 +71,13 @@ namespace ModHearth
             else
             {
                 disabledMods.Remove(reference);
-                enabledMods.Insert(newIndex, reference);
+                if (newIndex >= enabledMods.Count)
+                    enabledMods.Add(reference);
+                else
+                    enabledMods.Insert(newIndex, reference);
             }
+            ModpackAltered = true;
+            form.ShowUnsavedChanges();
         }
 
         public void ModOrderChange(ModReference reference, int newIndex)
@@ -103,11 +111,13 @@ namespace ModHearth
                 enabledMods.Insert(newIndex, reference);
             }
             Console.WriteLine($"moved from {currentIndex} to {newIndex}");
+            ModpackAltered = true;
+            form.ShowUnsavedChanges();
         }
 
-        public void SetSelectedModlist(string modlistName)
-        {
-            selectedModlist = modlistMap[modlistName];
+        public void SetSelectedModlist(int index)
+        {   
+            selectedModlistIndex = index;
 
             enabledMods = new List<ModReference>();
             disabledMods = new HashSet<ModReference>();
@@ -145,11 +155,20 @@ namespace ModHearth
             string vanillaDataPath = Path.Combine(config.DFFolderPath, @"data\vanilla");
             foreach (string vanillaModDir in Directory.GetDirectories(vanillaDataPath))
             {
-                //ignore three non-mod folders
-                if (vanillaModDir.Contains("mod_upload") || vanillaModDir.Contains("examples and notes") || vanillaModDir.Contains("interaction examples"))
-                    continue;
                 modFolders.Add(vanillaModDir);
             }
+
+            //remove known non-mod folders
+            List<string> temp = new List<string>();
+            foreach(string modPath in modFolders) 
+            {
+                //ignore three non-mod folders
+                if (modPath.Contains("mod_upload") || modPath.Contains("examples and notes") || modPath.Contains("interaction examples"))
+                    continue;
+                temp.Add(modPath);
+                
+            }
+            modFolders = temp;
 
             //load all the mods
             foreach (string modFolder in modFolders)
@@ -187,21 +206,24 @@ namespace ModHearth
             string dfHackModlistPath = Path.Combine(config.DFFolderPath, @"dfhack-config\mod-manager.json");
             string dfHackModlistJson = File.ReadAllText(dfHackModlistPath);
             modlists = new List<DFHackModlist>(JsonSerializer.Deserialize<List<DFHackModlist>>(dfHackModlistJson));
-
-            this.modlistMap = new Dictionary<string, DFHackModlist>();
+            savedModlists = new List<DFHackModlist>();
 
             Console.WriteLine();
             Console.WriteLine("Found modlists: ");
-            foreach (var modlist in modlists)
+            for(int i = 0; i < modlists.Count; i++) 
             {
+                DFHackModlist modlist = modlists[i];
                 Console.WriteLine("   Name: " + modlist.name);
                 Console.WriteLine("   Default: " + modlist.@default);
                 Console.WriteLine("   Mods count: " + modlist.modlist.Length);
                 Console.WriteLine();
-                modlistMap.Add(modlist.name, modlist);
+
+                //make a copy in savedModLists
+                savedModlists.Add(DFHackModlist.copy(modlist));
                 if(modlist.@default)
                 {
-                    SetSelectedModlist(modlist.name);
+                    SetSelectedModlist(i);
+                    form.currentModlistIndex = i;
                 }
             }
         }
@@ -274,6 +296,26 @@ namespace ModHearth
             Console.WriteLine("Config saved.");
             string jsonContent = JsonSerializer.Serialize(config);
             File.WriteAllText(configPath, jsonContent);
+        }
+
+        public void SaveModlist() 
+        {
+            //set the saved list to a copy of this one
+            savedModlists[selectedModlistIndex] = DFHackModlist.copy(modlists[selectedModlistIndex]);
+            
+            string dfHackModlistPath = Path.Combine(config.DFFolderPath, @"dfhack-config\mod-manager.json");
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                WriteIndented = true // Enable pretty formatting
+            };
+            string modlistJson = JsonSerializer.Serialize(modlists, options);
+            File.WriteAllText(dfHackModlistPath, modlistJson);
+        }
+
+        public void ResetModlist() 
+        {
+            //set this modlist to a copy of saved one
+            modlists[selectedModlistIndex] = DFHackModlist.copy(savedModlists[selectedModlistIndex]);
         }
     }
 }

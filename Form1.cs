@@ -23,6 +23,10 @@ namespace ModHearth
 
         public Panel LeftModlistPanel => leftModlistPanel;
         public Panel RightModlistPanel => rightModlistPanel;
+        private bool manualIndexChangeFlag = false;
+
+        public int currentModlistIndex;
+        public bool visualChangesMadeFlag = false;
 
         private void RefreshSizeProperly()
         {
@@ -57,7 +61,7 @@ namespace ModHearth
             {
                 modlistComboBox.Items.Add(dfhackModlist.name);
             }
-            modlistComboBox.SelectedIndex = modlistComboBox.Items.IndexOf(manager.selectedModlist.name);
+            modlistComboBox.SelectedIndex = manager.selectedModlistIndex;
 
             Console.WriteLine("Form loaded");
         }
@@ -72,10 +76,94 @@ namespace ModHearth
 
         }
 
+        private bool UnsavedChangesPrompt(string message) 
+        {            
+            if (!manager.ModpackAltered)
+                return true;
+
+            //ask to save changes first
+            DialogResult result = MessageBox.Show($"You have unsaved changes to {manager.selectedModlist.name}. Do you want to save before {message}?", "Confirmation", MessageBoxButtons.YesNoCancel);
+
+            if (result == DialogResult.Yes)
+            {
+                //#fix# console color message function
+                SaveChanges();
+                return true;
+            }
+            else if (result == DialogResult.No) 
+            {
+                DiscardChanges();
+                return true;
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("Undoing action");
+                Console.ForegroundColor = ConsoleColor.White;
+                return false;
+            }
+        }
+
+        public void SaveChanges() 
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("Saving changes");
+            Console.ForegroundColor = ConsoleColor.White;
+            manager.SaveModlist();
+
+            //remove unsaved changes star
+            ResetChanges();
+        }
+
+        public void DiscardChanges()
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("Discarding changes");
+            Console.ForegroundColor = ConsoleColor.White;
+            manager.ResetModlist();
+
+            //remove unsaved changes star
+            ResetChanges();
+        }
+
+        private void ResetChanges() 
+        {
+            manager.ModpackAltered = false;
+            visualChangesMadeFlag = false;
+            manualIndexChangeFlag = true;
+            modlistComboBox.Items[currentModlistIndex] = manager.selectedModlist.name;
+        }
+
+        public void ShowUnsavedChanges() 
+        {
+            //we make visual changes, and then mark that the index has been modified
+            if(!visualChangesMadeFlag) 
+            {
+                visualChangesMadeFlag = true;
+                manualIndexChangeFlag = true;
+                modlistComboBox.Items[currentModlistIndex] += "*";
+            }
+        }
+
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            string selectedOption = modlistComboBox.SelectedItem.ToString();
-            manager.SetSelectedModlist(selectedOption);
+            Console.WriteLine("index change attempt to: " + modlistComboBox.SelectedIndex);
+            //if name was altered by us do not run prompt. needed since index change happens when name change
+            if (manualIndexChangeFlag) {
+                manualIndexChangeFlag = false;
+                return;
+            }
+            //if we have unsaved changes, and the prompt says we can't continue, then reset index
+            if(!UnsavedChangesPrompt("Changing modpack")) 
+            {
+                manualIndexChangeFlag = true;
+                modlistComboBox.SelectedIndex = currentModlistIndex;
+                return;
+            }
+            //if we did change index, 
+            currentModlistIndex = modlistComboBox.SelectedIndex;
+            Console.WriteLine($"modlist changed to {currentModlistIndex}: {modlistComboBox.Items[currentModlistIndex]}");
+            manager.SetSelectedModlist(currentModlistIndex);
             RefreshModColumns();
         }
 

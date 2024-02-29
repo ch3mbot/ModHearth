@@ -167,7 +167,7 @@ namespace ModHearth
             }
 
             Console.WriteLine($"dropped. from is: {sourcePanel.Name} to is: {lastInPanel.Name}");
-            Console.WriteLine("mod list: ");
+            //Console.WriteLine("mod list: ");
             Console.ForegroundColor = ConsoleColor.Blue;
             for (int i = 0; i < form.manager.enabledMods.Count; i++)
             {
