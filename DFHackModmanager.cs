@@ -12,9 +12,35 @@ namespace ModHearth
         public string id { get; set; }
         public int version { get; set; }
 
-        public string ToString()
+        public override string ToString()
         {
             return id + " | " + version;
+        }
+
+        public static bool operator ==(DFHackMod lhs, DFHackMod rhs)
+        {
+            if (ReferenceEquals(lhs, rhs)) return true;
+            if (ReferenceEquals(lhs, null)) return false;
+            if (ReferenceEquals(rhs, null)) return false;
+            return lhs.ToString() == rhs.ToString();
+        }
+        public static bool operator !=(DFHackMod lhs, DFHackMod rhs)
+        {
+            if (ReferenceEquals(lhs, rhs)) return false;
+            if (ReferenceEquals(lhs, null)) return true;
+            if (ReferenceEquals(rhs, null)) return true;
+            return lhs.ToString() != rhs.ToString();
+        }
+        public override int GetHashCode()
+        {
+            return ToString().GetHashCode();
+        }
+
+        public override bool Equals(Object? other)
+        {
+            if(other is DFHackMod dfother)
+                return this == dfother;
+            return false;
         }
     }
 

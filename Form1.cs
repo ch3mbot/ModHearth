@@ -21,8 +21,8 @@ namespace ModHearth
             manager = new ModHearthManager(this);
         }
 
-        public Panel LeftModlistPanel => leftModlistPanel;
-        public Panel RightModlistPanel => rightModlistPanel;
+        public VerticalFlowPanel LeftModlistPanel => leftModlistPanel;
+        public VerticalFlowPanel RightModlistPanel => rightModlistPanel;
         private bool manualIndexChangeFlag = false;
 
         public int currentModlistIndex;
@@ -280,11 +280,11 @@ namespace ModHearth
 
         private void RefreshModColumn(VerticalFlowPanel col, List<ModReference> modrefList, bool left)
         {
-            if (col.initialized)
-            {
-                col.UpdateVisibleOrder(!left);
+            //if (col.initialized)
+            //{
+                //col.UpdateVisibleOrder(modrefList);
                 return;
-            }
+            //}
             List<Control> conts = new List<Control>();
             foreach (ModReference modref in modrefList)
             {

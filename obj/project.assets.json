@@ -8,23 +8,23 @@
     "net7.0-windows7.0": []
   },
   "packageFolders": {
-    "C:\\Users\\chembot\\.nuget\\packages\\": {},
+    "C:\\Users\\dagan\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\chembot\\source\\repos\\ModHearth\\ModHearth.csproj",
+      "projectUniqueName": "G:\\Git Projects\\ModHearth\\ModHearth\\ModHearth.csproj",
       "projectName": "ModHearth",
-      "projectPath": "C:\\Users\\chembot\\source\\repos\\ModHearth\\ModHearth.csproj",
-      "packagesPath": "C:\\Users\\chembot\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\chembot\\source\\repos\\ModHearth\\obj\\",
+      "projectPath": "G:\\Git Projects\\ModHearth\\ModHearth\\ModHearth.csproj",
+      "packagesPath": "C:\\Users\\dagan\\.nuget\\packages\\",
+      "outputPath": "G:\\Git Projects\\ModHearth\\ModHearth\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\chembot\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\dagan\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],

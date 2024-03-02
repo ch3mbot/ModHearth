@@ -10,6 +10,12 @@
     <Compile Update="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="V2\MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="V2\ModrefPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="VerticalFlowPanel.cs">
       <SubType>Component</SubType>
     </Compile>

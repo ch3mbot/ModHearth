@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ModHearth.V2;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -34,7 +35,7 @@ namespace ModHearth
             this.BorderStyle = Style.modRefBorder;
 
             //#fix# name or ID?
-             label = new Label();
+            label = new Label();
             label.Text = modref.name + " " + modref.displayedVersion;
             label.AutoSize = false;
             label.AutoEllipsis = true;
