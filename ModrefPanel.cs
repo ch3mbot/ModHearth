@@ -7,28 +7,42 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace ModHearth
 {
-    public class ModrefPanel : Panel
+    /// <summary>
+    /// A panel representing a mod, to be dragged and dropped for GUI based modpack editing.
+    /// Does not make actual changes, just notifies manager classes.
+    /// </summary>
+    public class ModRefPanel : Panel
     {
         private bool isDragging = false;
-        private Point offset;
+
+        // Reference to the form, to notify of changes.
         public MainForm form;
+
+        // Get the parent of this control as a VerticalFlowPanel (this is always the case).
         public VerticalFlowPanel vParent => Parent as VerticalFlowPanel;
 
+        // Which ModReference this panel represents.
         public ModReference modref;
-        public DFHackMod dfmodref => modref.ToDFHackMod();
 
+        // Quick extraction of DFHMod.
+        public DFHMod dfmodref => modref.ToDFHMod();
+
+        // The label showing the modrefs name
         private Label label;
 
-        public static ModrefPanel draggee;
+        // Which ModrefPanel is currently being dragged. Only one is dragged at once, hence static.
+        public static ModRefPanel draggee;
 
+        // Keep track of the last position the mouse was when this is being dragged.
         private Point lastPosition;
 
-        public ModrefPanel(ModReference modref, MainForm form)
+        public ModRefPanel(ModReference modref, MainForm form)
         {
+            // Basic references.
             this.form = form;
             this.modref = modref;
 
-            //#fix# name or ID?
+            // Set up the mod name label.
             label = new Label();
             label.Text = modref.name + " " + modref.displayedVersion;
             label.AutoSize = false;
@@ -38,9 +52,10 @@ namespace ModHearth
             label.Dock = DockStyle.Fill;
             this.Controls.Add(label);
 
-            //this.Anchor = AnchorStyles.Left | AnchorStyles.Right; ;
+            // Set up anchors.
             this.Margin = Style.modRefPadding;
 
+            // Mouse function mapping.
             label.MouseDown += ModrefPanel_MouseDown;
             label.MouseMove += ModrefPanel_MouseMove;
             label.MouseUp += ModrefPanel_MouseUp;
@@ -49,6 +64,7 @@ namespace ModHearth
             this.MouseMove += ModrefPanel_MouseMove;
             this.MouseUp += ModrefPanel_MouseUp;
 
+            // Some style things.
             this.BackColor = Style.modRefColor;
             this.BorderStyle = Style.modRefBorder;
             this.Margin = Style.modRefPadding;
@@ -56,29 +72,35 @@ namespace ModHearth
             this.Visible = true;
         }
 
-        //#fix# needed?
+        // This is run once when this object is added to its parent.
         public void Initialize()
         {
+            // Set width and height properly.
             this.Width = Parent.Width - Margin.Left - Margin.Right - SystemInformation.VerticalScrollBarWidth;
             label.Width = this.Width;
             this.Height = Style.modRefHeight;
         }
 
+        // On mouse down, set isDragging to true, this to be the draggee, and change cursor.
         private void ModrefPanel_MouseDown(object sender, MouseEventArgs e)
         {
             isDragging = true;
             draggee = this;
             Cursor.Current = new Cursor(Resource1.grab_cursor.GetHicon());
         }
+
+        // While this is being dragged and gets moved, notify the form, and update the last recorded position.
         private void ModrefPanel_MouseMove(object sender, MouseEventArgs e)
         {
             if(isDragging)
             {
                 Point mousePos = (Control.MousePosition);
-                form.ModrefMouseMove(mousePos, this);
+                form.ModrefMouseMove(mousePos);
                 lastPosition = mousePos;
             }
         }
+
+        // When this panel is dropped, reset isDragging, reset the cursor, and notify the form.
         private void ModrefPanel_MouseUp(object sender, MouseEventArgs e)
         {
             isDragging = false;
@@ -86,6 +108,7 @@ namespace ModHearth
             form.ModrefMouseUp(lastPosition, this);
         }
 
+        // This control paints the background image on top of background color, for highlighting.
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);

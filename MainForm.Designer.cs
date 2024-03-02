@@ -30,7 +30,7 @@
         {
             rightModlistPanel = new VerticalFlowPanel();
             leftModlistPanel = new VerticalFlowPanel();
-            modlistComboBox = new ComboBox();
+            modpackComboBox = new ComboBox();
             modlistColumnTableLayout = new TableLayoutPanel();
             outerTableLayout = new TableLayoutPanel();
             rightPanel = new Panel();
@@ -78,13 +78,13 @@
             // 
             // modlistComboBox
             // 
-            modlistComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            modlistComboBox.FormattingEnabled = true;
-            modlistComboBox.Location = new Point(3, 49);
-            modlistComboBox.Name = "modlistComboBox";
-            modlistComboBox.Size = new Size(191, 23);
-            modlistComboBox.TabIndex = 6;
-            modlistComboBox.SelectedIndexChanged += modlistComboBox_SelectedIndexChanged;
+            modpackComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            modpackComboBox.FormattingEnabled = true;
+            modpackComboBox.Location = new Point(3, 49);
+            modpackComboBox.Name = "modlistComboBox";
+            modpackComboBox.Size = new Size(191, 23);
+            modpackComboBox.TabIndex = 6;
+            modpackComboBox.SelectedIndexChanged += modlistComboBox_SelectedIndexChanged;
             // 
             // modlistColumnTableLayout
             // 
@@ -128,7 +128,7 @@
             rightPanel.Controls.Add(deleteListButton);
             rightPanel.Controls.Add(renameListButton);
             rightPanel.Controls.Add(refreshModsButton);
-            rightPanel.Controls.Add(modlistComboBox);
+            rightPanel.Controls.Add(modpackComboBox);
             rightPanel.Controls.Add(playGameButton);
             rightPanel.Controls.Add(undoChangesButton);
             rightPanel.Controls.Add(saveButton);
@@ -230,7 +230,7 @@
             renameListButton.TabIndex = 11;
             renameListButton.Text = "Rename";
             renameListButton.UseVisualStyleBackColor = true;
-            renameListButton.Click += renameListButton_Click;
+            renameListButton.Click += renameModpackButton_Click;
             // 
             // deleteListButton
             // 
@@ -250,7 +250,7 @@
             newListButton.TabIndex = 13;
             newListButton.Text = "New";
             newListButton.UseVisualStyleBackColor = true;
-            newListButton.Click += newListButton_Click;
+            newListButton.Click += newPackButton_Click;
             // 
             // importButton
             // 
@@ -291,7 +291,7 @@
         #endregion
         private VerticalFlowPanel rightModlistPanel;
         private VerticalFlowPanel leftModlistPanel;
-        private ComboBox modlistComboBox;
+        private ComboBox modpackComboBox;
         private TableLayoutPanel modlistColumnTableLayout;
         private TableLayoutPanel outerTableLayout;
         private Panel rightPanel;
