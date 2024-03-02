@@ -24,7 +24,7 @@ This is a mod manager for the steam version of Dwarf Fortress, made to interact 
 
 ### General Functionality
 This tool works by pulling mods from the dwarf fortress mods folder, and pulling modpacks from the dfhack config mod-manager.json.
-ModReferences are generated from found folders, while modpacks are generated from the dfhack config.
+ModReferences are generated from found mod folders, while modpacks are generated from the dfhack config.
 Loading modpacks into the game is done via altering mod-manager.json and using dfhacks normal mod management once the game loads.
 
 ### Term Definitions
@@ -34,6 +34,7 @@ These are set up to act like a value type.
 
 #### ModReference
 > FIXME: mod dependency detection and storage here, integration into drag and drop system
+
 A more comprehensive object storing more information about mods, mostly for displaying. Is not saved.
 Can easily be converted to a DFHMod.
 
