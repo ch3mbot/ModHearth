@@ -1,4 +1,3 @@
-using ModHearth.V2;
 
 namespace ModHearth
 {

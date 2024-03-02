@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
-namespace ModHearth.V2
+namespace ModHearth
 {
     public class ModrefPanel : Panel
     {

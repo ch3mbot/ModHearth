@@ -1,5 +1,5 @@
-﻿namespace ModHearth.V2
-{
+﻿namespace ModHearth
+{ 
     partial class MainForm
     {
         /// <summary>

@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing.Text;
 using System.Linq;
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -24,30 +20,32 @@ namespace ModHearth
 
     public class ModHearthManager
     {
-        public Dictionary<string, ModReference> allMods;
-        public List<ModReference> enabledMods;
-        public HashSet<ModReference> disabledMods;
+        private Dictionary<string, ModReference> modrefMap;
+        public ModReference GetModRef(string key) => modrefMap[key];
+        public DFHackMod GetDFHackMod(string key) => modrefMap[key].ToDFHackMod();
+        public ModReference RefFromDFHack(DFHackMod dfmod) => modrefMap[dfmod.ToString()];
 
-        public ModHearthConfig config;
+        public List<DFHackMod> activeMods;
+        public HashSet<DFHackMod> unactiveMods;
+        public HashSet<DFHackMod> modPool;
 
-        public static string configPath = "config.json";
-        public static string modlistPath = "modlists/";
-
-        public List<DFHackModlist> actualModLists;
-
-        public Form1 form;
-
-        public DFHackModlist lastSelectedModlist => actualModLists[selectedModlistIndex];
+        public DFHackModlist SelectedModlist => modpacks[selectedModlistIndex];
+        public List<DFHackModlist> modpacks;
         public int selectedModlistIndex;
 
-        public bool ModpackAltered = false;
+        private ModHearthConfig config;
 
+        private static readonly string configPath = "config.json";
+        private static readonly string modlistPath = "modlists/";
 
-        public ModHearthManager(Form1 form)
+        private MainForm form;
+
+        public ModHearthManager() 
         {
-            this.form = form;
-
             Console.WriteLine("Creating Hearth");
+
+            form = MainForm.instance;
+
             //get and load data
             AttemptLoadConfig();
             FixConfig();
@@ -57,95 +55,103 @@ namespace ModHearth
 
             FindModlists();
 
-            
+            Console.WriteLine();
+            Console.WriteLine($"Found {modrefMap.Count} mods and {modpacks.Count} modlists");
+            Console.WriteLine();
         }
 
-        public void ModAbledChange(ModReference reference, bool enabled, int newIndex)
+        //alter the current modlist and save to dfhackfile
+        public void SaveCurrentModlist()
         {
-            if(!enabled)
-            {
-                enabledMods.Remove(reference);
-                disabledMods.Add(reference);
-            }
-            else
-            {
-                disabledMods.Remove(reference);
-                if (newIndex >= enabledMods.Count)
-                    enabledMods.Add(reference);
-                else
-                    enabledMods.Insert(newIndex, reference);
-            }
-            ModpackAltered = true;
-            form.ShowUnsavedChanges();
+            SelectedModlist.modlist = new List<DFHackMod>(activeMods);
+
+            SaveAllLists();
         }
 
-        public void ModOrderChange(ModReference reference, int newIndex)
+        public void SaveAllLists()
         {
-            if (!enabledMods.Contains(reference))
-                return;
-            int currentIndex = enabledMods.IndexOf(reference);
 
-            if (currentIndex < newIndex)
-                newIndex--;
-
-            if (currentIndex == newIndex)
+            string dfHackModlistPath = Path.Combine(config.DFFolderPath, @"dfhack-config\mod-manager.json");
+            JsonSerializerOptions options = new JsonSerializerOptions
             {
-
-            }
-            else if (currentIndex < newIndex)
-            {
-                enabledMods.RemoveAt(currentIndex);
-                if (newIndex < enabledMods.Count)
-                {
-                    enabledMods.Insert(newIndex, reference);
-                }
-                else
-                {
-                    enabledMods.Add(reference);
-                }
-            }
-            else
-            {
-                enabledMods.RemoveAt(currentIndex);
-                enabledMods.Insert(newIndex, reference);
-            }
-            Console.WriteLine($"moved from {currentIndex} to {newIndex}");
-            ModpackAltered = true;
-            form.ShowUnsavedChanges();
+                WriteIndented = true // Enable pretty formatting
+            };
+            string modlistJson = JsonSerializer.Serialize(modpacks, options);
+            File.WriteAllText(dfHackModlistPath, modlistJson);
         }
 
         public void SetSelectedModlist(int index)
-        {   
+        {
             selectedModlistIndex = index;
-
-            enabledMods = new List<ModReference>();
-            disabledMods = new HashSet<ModReference>();
-            foreach (DFHackMod dfhmod in lastSelectedModlist.modlist)
+            activeMods = new List<DFHackMod>();
+            unactiveMods = new HashSet<DFHackMod>(modPool);
+            foreach (DFHackMod dfm in SelectedModlist.modlist)
             {
-                if(!allMods.ContainsKey(dfhmod.ToString()))
-                {
-                    //#fix# should we pop up a window?
-                    //Console.ForegroundColor = ConsoleColor.Yellow;
-                    //Console.WriteLine($"WARNING: mod {dfhmod.id} was not found.");
-                    //Console.ForegroundColor = ConsoleColor.White;
-                }
-                else
-                {
-                    enabledMods.Add(allMods[dfhmod.ToString()]);
-                }
-            }
-            foreach(ModReference modref in allMods.Values)
-            {
-                if(!enabledMods.Contains(modref))
-                {
-                    disabledMods.Add(modref);
-                }
+                activeMods.Add(dfm);
+                unactiveMods.Remove(dfm);
             }
         }
 
+        //only used for import
+        public void SetActiveMods(List<DFHackMod> mods)
+        {
+            activeMods = new List<DFHackMod>();
+            unactiveMods = new HashSet<DFHackMod>(modPool);
+            Console.WriteLine($"modpack set active ig ");
+            for (int i = 0; i < mods.Count; i++)
+            {
+                Console.WriteLine($"mod!!! woohoo!!! {mods[i].ToString()}");
+                activeMods.Add(mods[i]);
+                unactiveMods.Remove(mods[i]);
+            }
+        }
+
+        public void MoveMod(ModReference mod, int newIndex, bool sourceLeft, bool destinationLeft)
+        {
+            DFHackMod dfm = mod.ToDFHackMod();
+            if (sourceLeft && destinationLeft)
+            {
+                //do nothing since disabled mod order doesn't matter
+            }
+            else if (!sourceLeft && !destinationLeft)
+            {
+                //swap the mod order around abit
+                int oldIndex = activeMods.IndexOf(dfm);
+
+                //if we remove the mod from the old index, it shifts the whole list down
+                if (oldIndex < newIndex)
+                    newIndex--;
+
+                //remove from old index and add to new index
+                activeMods.RemoveAt(oldIndex);
+                if (newIndex == activeMods.Count)
+                    activeMods.Add(dfm);
+                else
+                    activeMods.Insert(newIndex, dfm);
+
+            }
+            else if (!sourceLeft && destinationLeft)
+            {
+                //disable and add to disabled. simple enough
+                activeMods.Remove(dfm);
+                unactiveMods.Add(dfm);
+            }
+            else if (sourceLeft && !destinationLeft)
+            {
+                //insert/add from disabled to enabled
+                unactiveMods.Remove(dfm);
+                if (newIndex == activeMods.Count)
+                    activeMods.Add(dfm);
+                else
+                    activeMods.Insert(newIndex, dfm);
+            }
+        }
+
+        #region initialization file stuff
         private void FindAllMods()
         {
-            allMods = new Dictionary<string, ModReference>();
+            modrefMap = new Dictionary<string, ModReference>();
+            modPool = new HashSet<DFHackMod>();
 
             Console.WriteLine("Finding all mods... ");
             List<string> modFolders = new List<string>(Directory.GetDirectories(config.ModsPath));
@@ -159,13 +165,13 @@ namespace ModHearth
 
             //remove known non-mod folders
             List<string> temp = new List<string>();
-            foreach(string modPath in modFolders) 
+            foreach (string modPath in modFolders)
             {
                 //ignore three non-mod folders
                 if (modPath.Contains("mod_upload") || modPath.Contains("examples and notes") || modPath.Contains("interaction examples"))
                     continue;
                 temp.Add(modPath);
-                
+
             }
             modFolders = temp;
 
@@ -177,10 +183,11 @@ namespace ModHearth
                 {
                     string modInfo = File.ReadAllText(infoPath);
                     ModReference modRef = new ModReference(modInfo, modFolder);
-                    if(!modRef.failed)
+                    if (!modRef.failed)
                     {
                         Console.WriteLine($"   Valid mod found: {modRef.name}");
-                        allMods.Add(modRef.DFHackCompatibleString(), modRef);
+                        modrefMap.Add(modRef.DFHackCompatibleString(), modRef);
+                        modPool.Add(modRef.ToDFHackMod());
                     }
                     else
                     {
@@ -204,35 +211,60 @@ namespace ModHearth
         {
             string dfHackModlistPath = Path.Combine(config.DFFolderPath, @"dfhack-config\mod-manager.json");
             string dfHackModlistJson = File.ReadAllText(dfHackModlistPath);
-            actualModLists = new List<DFHackModlist>(JsonSerializer.Deserialize<List<DFHackModlist>>(dfHackModlistJson));
+            modpacks = new List<DFHackModlist>(JsonSerializer.Deserialize<List<DFHackModlist>>(dfHackModlistJson));
 
             Console.WriteLine();
+            bool modMissing = false;
             Console.WriteLine("Found modlists: ");
-            for(int i = 0; i < actualModLists.Count; i++) 
+            string missingMessage = $"Some mods missing. \nModlists will be modified to not require lost mods. \nMissing mods: ";
+            HashSet<DFHackMod> notFound = new HashSet<DFHackMod>();
+            for (int i = 0; i < modpacks.Count; i++)
             {
-                DFHackModlist modlist = actualModLists[i];
+                DFHackModlist modlist = modpacks[i];
+
+                HashSet<DFHackMod> thisListMissingMods = new HashSet<DFHackMod>();
+                foreach(DFHackMod mod in modlist.modlist)
+                {
+                    if(!modPool.Contains(mod))
+                    {
+                        modMissing = true;
+                        notFound.Add(mod);
+                        thisListMissingMods.Add(mod);
+                        missingMessage += $"\n{mod}";
+                    }
+                }
+                //#fix# could be a faster foor loop but eh
+                foreach(DFHackMod m in thisListMissingMods)
+                {
+                    modlist.modlist.Remove(m);
+                }
+
                 Console.WriteLine("   Name: " + modlist.name);
                 Console.WriteLine("   Default: " + modlist.@default);
                 Console.WriteLine("   Mods count: " + modlist.modlist.Count);
                 Console.WriteLine();
 
-                if(modlist.@default)
+                if (modlist.@default)
                 {
                     SetSelectedModlist(i);
-                    form.currentModlistIndex = i;
                 }
+                modpacks[i] = modlist;
+            }
+            if(modMissing)
+            {
+                MessageBox.Show(missingMessage, "Missing Mods", MessageBoxButtons.OK);
             }
         }
 
         public void FixConfig()
         {
-            if(config == null)
+            if (config == null)
                 config = new ModHearthConfig();
-            if(String.IsNullOrEmpty(config.DFEXEPath))
+            if (String.IsNullOrEmpty(config.DFEXEPath))
             {
                 Console.WriteLine("Config file missing DF path.");
                 string newPath = "";
-                while(string.IsNullOrEmpty(newPath))
+                while (string.IsNullOrEmpty(newPath))
                 {
                     newPath = GetDFPath();
                 }
@@ -247,7 +279,7 @@ namespace ModHearth
             OpenFileDialog dfFileDialog = new OpenFileDialog();
             dfFileDialog.Filter = "Executable files (*.exe)|Dwarf Fortress.exe";
             DialogResult result = dfFileDialog.ShowDialog();
-            if(result == DialogResult.OK) 
+            if (result == DialogResult.OK)
             {
                 string selectedFilePath = dfFileDialog.FileName;
                 Console.WriteLine("DF path set to: " + selectedFilePath);
@@ -269,7 +301,7 @@ namespace ModHearth
                     // Deserialize the JSON content into an object
                     config = JsonSerializer.Deserialize<ModHearthConfig>(jsonContent);
 
-                    if(config == null)
+                    if (config == null)
                     {
                         Console.WriteLine("Config file borked.");
                         FixConfig();
@@ -293,21 +325,6 @@ namespace ModHearth
             string jsonContent = JsonSerializer.Serialize(config);
             File.WriteAllText(configPath, jsonContent);
         }
-
-        public void SaveModlist() 
-        {
-            //set the saved list to a copy of this one
-            List<DFHackMod> newlist = new List<DFHackMod>();
-            enabledMods.ForEach((x) => newlist.Add(x.ToDFHackMod()));
-            lastSelectedModlist.modlist = newlist;
-            
-            string dfHackModlistPath = Path.Combine(config.DFFolderPath, @"dfhack-config\mod-manager.json");
-            JsonSerializerOptions options = new JsonSerializerOptions
-            {
-                WriteIndented = true // Enable pretty formatting
-            };
-            string modlistJson = JsonSerializer.Serialize(actualModLists, options);
-            File.WriteAllText(dfHackModlistPath, modlistJson);
-        }
+        #endregion
     }
 }

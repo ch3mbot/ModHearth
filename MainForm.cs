@@ -8,10 +8,11 @@ using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace ModHearth.V2
+namespace ModHearth
 {
     public partial class MainForm : Form
     {
@@ -21,7 +22,7 @@ namespace ModHearth.V2
 
         public static MainForm instance;
 
-        public ModHearthManager2 manager;
+        public ModHearthManager manager;
 
         public VerticalFlowPanel LeftModlistPanel => leftModlistPanel;
         public VerticalFlowPanel RightModlistPanel => rightModlistPanel;
@@ -29,35 +30,45 @@ namespace ModHearth.V2
         private bool changesMade;
         private bool changesMarked = false;
         private int lastIndex;
+        private bool modifyingCombobox = false;
 
         public MainForm()
         {
+            //make console function
             AllocConsole();
             Console.ForegroundColor = ConsoleColor.White;
 
+            //basic initialization
             instance = this;
             InitializeComponent();
-            manager = new ModHearthManager2();
+            manager = new ModHearthManager();
 
+            //#fix# not implemented yet
             refreshModsButton.Enabled = false;
 
+            //disable/enable change related buttons
             SetChangesMade(false);
 
+            //set up combobox and modreference controls
             SetupModlistBox();
             GenerateModrefControls();
         }
 
-        private bool alteredModlistBox = false;
         private void SetupModlistBox()
         {
-            foreach (DFHackModlist m in manager.modlists)
+            modifyingCombobox = true;
+
+            //go through the modpacks
+            foreach (DFHackModlist m in manager.modpacks)
             {
                 modlistComboBox.Items.Add(m.name);
             }
-            alteredModlistBox = true;
+
+            //set the index to the default modpack
             modlistComboBox.SelectedIndex = manager.selectedModlistIndex;
             lastIndex = manager.selectedModlistIndex;
-            alteredModlistBox = false;
+
+            modifyingCombobox = false;
         }
 
         private void GenerateModrefControls()
@@ -140,15 +151,37 @@ namespace ModHearth.V2
                 return;
             modlistComboBox.Items[index] = modlistComboBox.Items[index].ToString() + "*";
             changesMarked = true;
+            modDescriptionLabel.Text = "changes just marked";
         }
 
         private void UnmarkChanges(int index)
         {
+            if (!changesMarked)
+                return;
             string currstr = modlistComboBox.Items[index].ToString();
             modlistComboBox.Items[index] = currstr.Substring(0, currstr.Length - 1);
             changesMarked = false;
+            modDescriptionLabel.Text = "changes just unmarked";
         }
+        private void SetChangesMade(bool changesMade)
+        {
+            //set actual variable
+            this.changesMade = changesMade;
 
+            //no undoing if there are no changes
+            undoChangesButton.Enabled = changesMade;
+
+            //if there are changes then no renaming, importing, exporting, or new lists
+            renameListButton.Enabled = !changesMade;
+            importButton.Enabled = !changesMade;
+            exportButton.Enabled = !changesMade;
+            newListButton.Enabled = !changesMade;
+
+            //debugging
+            modTitleLabel.Text = "changesMade: " + changesMade;
+
+        }
+        
         private void RefreshModlistPanels()
         {
             leftModlistPanel.UpdateVisibleOrder(new List<DFHackMod>(manager.unactiveMods));
@@ -172,14 +205,6 @@ namespace ModHearth.V2
             }
         }
 
-        private void SetChangesMade(bool changesMade)
-        {
-            this.changesMade = changesMade;
-            undoChangesButton.Enabled = changesMade;
-            renameListButton.Enabled = !changesMade;
-
-        }
-
         private void UnsetSurroundingToHighlight()
         {
             foreach (Control c in highlightAffected)
@@ -191,7 +216,7 @@ namespace ModHearth.V2
         private void saveButton_Click(object sender, EventArgs e)
         {
             SetChangesMade(false);
-            SaveLists();
+            SaveList();
         }
 
         private void undoChangesButton_Click(object sender, EventArgs e)
@@ -199,7 +224,8 @@ namespace ModHearth.V2
             DialogResult result = MessageBox.Show("Are you sure you want to reset modlist changes?", "Undo changes", MessageBoxButtons.YesNo);
             if (result == DialogResult.Yes)
             {
-                UndoListChanges();
+                //undo our changes and immediately refresh
+                UndoListChanges(true);
             }
         }
 
@@ -213,28 +239,35 @@ namespace ModHearth.V2
             //rebuild entire form? unknonwn
         }
 
-        private void SaveLists()
+        //save the current modlist to file.
+        private void SaveList()
         {
             manager.SaveCurrentModlist();
 
-            UndoListChanges();
+            //no point in refreshing, nothing has changes. this effectively unmarks changes.
+            UndoListChanges(false);
         }
 
-        private void UndoListChanges()
+        private void UndoListChanges(bool doRefresh)
         {
-            manager.SetSelectedModlist(modlistComboBox.SelectedIndex);
-            RefreshModlistPanels();
+            //manager sets activemods to the ones from the index
+            manager.SetSelectedModlist(lastIndex);
 
-            SetChangesMade(false);
+            //if we should refresh immediately
+            if(doRefresh)
+                RefreshModlistPanels();
+
+            //unmark changes and fix buttons
             UnmarkChanges(lastIndex);
+            SetChangesMade(false);
 
         }
 
         private void modlistComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
 
-            //if we tripped this by altering an entry do nothing
-            if (alteredModlistBox)
+            //if we are programatically modifying combobox, do nothing
+            if (modifyingCombobox)
             {
                 return;
             }
@@ -252,26 +285,26 @@ namespace ModHearth.V2
                 DialogResult result = MessageBox.Show($"You have unsaved changes to {manager.SelectedModlist.name}, do you want to save before continuing?", "Unsaved Changes", MessageBoxButtons.YesNoCancel);
                 if (result == DialogResult.Yes)
                 {
-                    SaveLists();
+                    SaveList();
                 }
                 else if (result == DialogResult.No)
                 {
-                    UndoListChanges();
+                    //do not refresh that list.
+                    UndoListChanges(false);
                 }
                 else
                 {
-                    //if cancel, set index to last
-                    alteredModlistBox = true;
+                    //if cancel, set index to last, then return.
+                    modifyingCombobox = true;
                     modlistComboBox.SelectedIndex = lastIndex;
-                    alteredModlistBox = false;
+                    modifyingCombobox = false;
+                    return;
                 }
             }
-            else
-            {
-                manager.SetSelectedModlist(modlistComboBox.SelectedIndex);
-                RefreshModlistPanels();
-            }
 
+            //if no changes were made, or yes/no was selected, then change the index
+            manager.SetSelectedModlist(modlistComboBox.SelectedIndex);
+            RefreshModlistPanels();
             lastIndex = modlistComboBox.SelectedIndex;
         }
 
@@ -283,62 +316,150 @@ namespace ModHearth.V2
                 return;
             newList.@default = false;
             newList.modlist = new List<DFHackMod>();
-            manager.modlists.Add(newList);
 
-            alteredModlistBox = true;
+            RegisterNewModpack(newList);
+        }
+
+        //adds a new modpack to the list, and saves immediately. no changes made since it saves.
+        private void RegisterNewModpack(DFHackModlist newList)
+        {
+            modifyingCombobox = true;
+
+            //add the new list to the manager, and save it to the lists file
+            manager.modpacks.Add(newList);
+            manager.SaveAllLists();
+
+            //add to combobox and select
             modlistComboBox.Items.Add(newList.name);
             modlistComboBox.SelectedIndex = modlistComboBox.Items.Count - 1;
 
-            MarkChanges(modlistComboBox.SelectedIndex);
+            //set manager to it and refresh
             manager.SetSelectedModlist(modlistComboBox.SelectedIndex);
             RefreshModlistPanels();
-            SetChangesMade(true);
-            undoChangesButton.Enabled = false;
-            alteredModlistBox = false;
+
+            modifyingCombobox = false;
         }
+
 
         private void renameListButton_Click(object sender, EventArgs e)
         {
             string newName = Interaction.InputBox("Please enter a new name for the modpack", "New Modpack Name", manager.SelectedModlist.name);
             if(string.IsNullOrEmpty(newName))
                 return;
+
+            //change names but do not set changesmade to true. renaming is instant.
+            modifyingCombobox = true;
+
             manager.SelectedModlist.name = newName;
-            alteredModlistBox = true;
             modlistComboBox.Items[modlistComboBox.SelectedIndex] = newName;
-            SetChangesMade(true);
-            alteredModlistBox = false;
+
+            SaveList();
+
+            modifyingCombobox = false;
         }
 
         private void deleteListButton_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show($"Are you sure you want to delete {manager.SelectedModlist.name}?", "Delete modlist", MessageBoxButtons.YesNo);
+            DialogResult result = MessageBox.Show($"Are you sure you want to delete {manager.SelectedModlist.name}? This is final.", "Delete modlist", MessageBoxButtons.YesNo);
             if (result == DialogResult.Yes)
             {
-                if(manager.modlists.Count == 1)
+                //undo our changes, but do not refresh
+                UndoListChanges(false);
+
+                //minimum one modlist #fix# this is just because not having any modlists needs extra logic #fix# add new modlist if none present on start
+                if (manager.modpacks.Count == 1)
                 {
                     MessageBox.Show("You cannot delete the last modlist.", "Failed", MessageBoxButtons.OK);
                     return;
                 }
 
-                alteredModlistBox = true;
+                modifyingCombobox = true;
 
+                //remove the modpack from both
                 modlistComboBox.Items.RemoveAt(modlistComboBox.SelectedIndex);
-                manager.modlists.Remove(manager.SelectedModlist);
+                manager.modpacks.Remove(manager.SelectedModlist);
 
-                modlistComboBox.SelectedIndex = 0;
-
+                //overwrite lists file with missing modpack
                 manager.SaveAllLists();
+
+                //set the index and refresh
+                manager.SetSelectedModlist(0);
+                modlistComboBox.SelectedIndex = 0;
+                RefreshModlistPanels();
+
+                modifyingCombobox = false;
             }
         }
 
         private void importButton_Click(object sender, EventArgs e)
         {
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "Text files (*.json)|*.json";
+            openFileDialog.Title = "Select a Modpack JSON File";
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    string filePath = openFileDialog.FileName;
+                    string importedString = File.ReadAllText(filePath);
 
+                    DFHackModlist importedList = JsonSerializer.Deserialize<DFHackModlist>(importedString);
+                    for(int i = 0; i < manager.modpacks.Count; i++) 
+                    {
+                        DFHackModlist otherModlist = manager.modpacks[i];
+                        if(otherModlist.name == importedList.name)
+                        {
+                            DialogResult result = MessageBox.Show($"A modpack with the name {otherModlist.name} is already present. Would you like to overwrite it?", "Modlist Already Present", MessageBoxButtons.YesNo);
+                            if(result == DialogResult.Yes)
+                            {
+                                Console.WriteLine($"guh??");
+                                manager.SetSelectedModlist(i);
+                                manager.SetActiveMods(importedList.modlist);
+                                RefreshModlistPanels();
+
+                                SetChangesMade(true);
+                                MarkChanges(i);
+                                RefreshModlistPanels();
+                            }
+                            return;
+                        }
+                    }
+                    RegisterNewModpack(importedList);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
         }
 
         private void exportButton_Click(object sender, EventArgs e)
         {
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = "Text files (*.json)|*.json";
+            saveFileDialog.Title = "Save Modpack JSON File";
+            saveFileDialog.DefaultExt = "json";
+            saveFileDialog.AddExtension = true;
 
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    string filePath = saveFileDialog.FileName;
+                    JsonSerializerOptions options = new JsonSerializerOptions
+                    {
+                        WriteIndented = true // Enable pretty formatting
+                    };
+                    string exportString = JsonSerializer.Serialize(manager.SelectedModlist, options);
+                    File.WriteAllText(filePath, exportString);
+
+                    MessageBox.Show("File saved successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
         }
     }
 }
