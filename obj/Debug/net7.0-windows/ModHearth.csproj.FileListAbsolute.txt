@@ -3,7 +3,6 @@ G:\Git Projects\ModHearth\ModHearth\bin\Debug\net7.0-windows\ModHearth.deps.json
 G:\Git Projects\ModHearth\ModHearth\bin\Debug\net7.0-windows\ModHearth.runtimeconfig.json
 G:\Git Projects\ModHearth\ModHearth\bin\Debug\net7.0-windows\ModHearth.dll
 G:\Git Projects\ModHearth\ModHearth\bin\Debug\net7.0-windows\ModHearth.pdb
-G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.Form1.resources
 G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.csproj.GenerateResource.cache
 G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.GeneratedMSBuildEditorConfig.editorconfig
 G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.AssemblyInfoInputs.cache
@@ -32,3 +31,5 @@ C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\refint\ModHeart
 C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.pdb
 C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.genruntimeconfig.cache
 C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ref\ModHearth.dll
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.MainForm.resources
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.VerticalFlowPanel.resources

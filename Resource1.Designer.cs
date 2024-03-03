@@ -63,6 +63,16 @@ namespace ModHearth {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap DFIcon {
+            get {
+                object obj = ResourceManager.GetObject("DFIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap grab_cursor {
             get {
                 object obj = ResourceManager.GetObject("grab_cursor", resourceCulture);
@@ -93,9 +103,9 @@ namespace ModHearth {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap horrid_cursor {
+        internal static System.Drawing.Bitmap playIcon {
             get {
-                object obj = ResourceManager.GetObject("horrid_cursor", resourceCulture);
+                object obj = ResourceManager.GetObject("playIcon", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -103,9 +113,39 @@ namespace ModHearth {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap lock_in_emoji_1 {
+        internal static System.Drawing.Bitmap reloadIcon {
             get {
-                object obj = ResourceManager.GetObject("lock_in_emoji_1", resourceCulture);
+                object obj = ResourceManager.GetObject("reloadIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap saveIcon {
+            get {
+                object obj = ResourceManager.GetObject("saveIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap undoIcon {
+            get {
+                object obj = ResourceManager.GetObject("undoIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap XIcon {
+            get {
+                object obj = ResourceManager.GetObject("XIcon", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

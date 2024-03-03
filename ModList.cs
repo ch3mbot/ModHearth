@@ -18,11 +18,11 @@ namespace ModHearth
             this.mods = mods;
         }
 
-        public ModList(DFHackModlist dfhackModlist, Dictionary<string, ModReference> modMap)
+        public ModList(DFHModpack dfhackModlist, Dictionary<string, ModReference> modMap)
         {
             this.name = dfhackModlist.name;
             this.mods = new List<ModReference>();
-            foreach(DFHackMod dfmod in dfhackModlist.modlist)
+            foreach(DFHMod dfmod in dfhackModlist.modlist)
             {
                 this.mods.Add(modMap[dfmod.id]);
             }
