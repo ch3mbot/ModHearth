@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -39,6 +40,9 @@ namespace ModHearth
         private int lastIndex;
         private bool modifyingCombobox = false;
 
+        // ToolTip
+        public ToolTip toolTip1;
+
         public MainForm()
         {
             // Make console function.
@@ -49,6 +53,10 @@ namespace ModHearth
             InitializeComponent();
             manager = new ModHearthManager();
 
+            // Set up tooltip manager and add some tooltips.
+            SetupTooltipManager();
+            AddTooltips();
+
             // TODO: refreshing isn't implemented yet.
             refreshModsButton.Enabled = false;
 
@@ -58,6 +66,42 @@ namespace ModHearth
             // Set up combobox and modreference controls.
             SetupModlistBox();
             GenerateModrefControls();
+
+            // Apply some post load fixes.
+            this.Load += PostLoadFix;
+        }
+
+        private void PostLoadFix(object sender, EventArgs e)
+        {
+            // Do one problem find and refresh.
+            manager.FindModlistProblems();
+            RefreshModlistPanels();
+
+            // Select a random mod to be the shown one.
+            long selectedModIndex = DateTime.Now.Ticks % manager.modPool.Count;
+            ChangeModInfoDisplay(manager.GetRefFromDFHMod(manager.modPool.ToList()[(int)selectedModIndex]));
+        }
+
+        private void SetupTooltipManager()
+        {
+            // Create the ToolTip and associate with the Form container.
+            toolTip1 = new ToolTip();
+
+            // Set up the delays for the ToolTip.
+            toolTip1.AutoPopDelay = 10000;
+            toolTip1.InitialDelay = 0;
+            toolTip1.ReshowDelay = 0;
+            toolTip1.UseFading = false;
+
+            // Force the ToolTip text to be displayed whether or not the form is active.
+            toolTip1.ShowAlways = true;
+        }
+
+        private void AddTooltips()
+        {
+            toolTip1.SetToolTip(saveButton, "Save the current modlist");
+            toolTip1.SetToolTip(undoChangesButton, "Undo changes to the current modlist");
+            toolTip1.SetToolTip(playGameButton, "Run dwarf fortress");
         }
 
         private void SetupModlistBox()
@@ -106,7 +150,7 @@ namespace ModHearth
             // See if mouse is in panel.
             bool overLeft = leftModlistPanel.GetIndexAtPosition(position, out int indexL);
             bool overRight = rightModlistPanel.GetIndexAtPosition(position, out int indexR);
-            
+
             // Return if not in panel.
             if (!overLeft && !overRight)
             {
@@ -132,6 +176,9 @@ namespace ModHearth
         {
             // Undo old highlights.
             UnsetSurroundingToHighlight();
+
+            // Show new info of dragged mod.
+            ChangeModInfoDisplay(modrefPanel.modref);
 
             // See if mouse is in panel.
             bool overLeft = leftModlistPanel.GetIndexAtPosition(position, out int indexL);
@@ -159,6 +206,45 @@ namespace ModHearth
             // Have the manager apply the changes to the actual enabled mods, then refresh panels to show.
             manager.MoveMod(modrefPanel.modref, index, modrefPanel.vParent == leftModlistPanel, destinationPanel == leftModlistPanel);
             RefreshModlistPanels();
+        }
+
+        // Given a modreference, set the image and description to show it's info.
+        public void ChangeModInfoDisplay(ModReference modref)
+        {
+            modTitleLabel.Text = modref.name;
+            modDescriptionLabel.Text = modref.description;
+
+            string previewPath = Path.Combine(modref.path, "preview.png");
+            if (File.Exists(previewPath))
+            {
+                // Use prewvie image if it exists
+                using (FileStream stream = new FileStream(previewPath, FileMode.Open))
+                {
+                    Image originalImage = Image.FromStream(stream);
+                    SetModPictureBoxImage(originalImage);
+                }
+            }
+            else
+            {
+                // Use default image.
+                SetModPictureBoxImage(Resource1.DFIcon);
+            }
+
+        }
+
+        private void SetModPictureBoxImage(Image originalImage)
+        {
+            // Calculate scale factor and scale image by it.
+            float scaleFactor = (float)modPictureBox.Width / originalImage.Width;
+            int newWidth = (int)(originalImage.Width * scaleFactor);
+            int newHeight = (int)(originalImage.Height * scaleFactor);
+            Bitmap scaledImage = new Bitmap(originalImage, newWidth, newHeight);
+
+            // Set box to show image.
+            modPictureBox.Image = scaledImage;
+
+            // Adjust height of picture box area.
+            modInfoPanel.RowStyles[1].Height = modPictureBox.Image.Size.Height;
         }
 
         // If changes aren't already marked, adds a * to the combobox entry.
@@ -204,12 +290,19 @@ namespace ModHearth
             exportButton.Enabled = !changesMade;
             newListButton.Enabled = !changesMade;
         }
-        
+
         // Tell both modlistPanels to update which modreferencePanels are visible based on lists from manager.
         private void RefreshModlistPanels()
         {
             leftModlistPanel.UpdateVisibleOrder(new List<DFHMod>(manager.disabledMods));
-            RightModlistPanel.UpdateVisibleOrder(manager.enabledMods);
+            rightModlistPanel.UpdateVisibleOrder(manager.enabledMods);
+
+            // Make the right panel show any problems that pop up.
+            rightModlistPanel.ColorProblemMods(manager.modproblems);
+
+            // Make sure filters are empty.
+            leftSearchBox.Text = string.Empty;
+            rightSearchBox.Text = string.Empty;
         }
 
         // Highlight the panel at and before index, if they exist.
@@ -275,7 +368,7 @@ namespace ModHearth
         // TODO: rune the dwarf fortress executable.
         private void playGameButton_Click(object sender, EventArgs e)
         {
-
+            manager.RunDFHack();
         }
 
         // TODO: rescan mod folders and recreate controls for modlistPanels. For things like downloading non workshop mods, or mod creation.
@@ -354,7 +447,7 @@ namespace ModHearth
                 return;
 
             // Create a new modpack.
-            DFHModpack newPack = new DFHModpack(false, new List<DFHMod>(), newName);
+            DFHModpack newPack = new DFHModpack(false, manager.GenerateVanillaModlist(), newName);
 
             // Register the modpack.
             RegisterNewModpack(newPack);
@@ -374,8 +467,7 @@ namespace ModHearth
             modpackComboBox.SelectedIndex = modpackComboBox.Items.Count - 1;
 
             //set manager to it and refresh
-            manager.SetSelectedModpack(modpackComboBox.SelectedIndex);
-            RefreshModlistPanels();
+            SetAndRefreshModpack(modpackComboBox.SelectedIndex);
 
             modifyingCombobox = false;
         }
@@ -384,7 +476,7 @@ namespace ModHearth
         private void renameModpackButton_Click(object sender, EventArgs e)
         {
             string newName = Interaction.InputBox("Please enter a new name for the modpack", "New Modpack Name", manager.SelectedModlist.name);
-            if(string.IsNullOrEmpty(newName))
+            if (string.IsNullOrEmpty(newName))
                 return;
 
             // Change names but do not set changesmade to true.
@@ -449,14 +541,14 @@ namespace ModHearth
                     DFHModpack importedList = JsonSerializer.Deserialize<DFHModpack>(importedString);
 
                     // Check if another modpack by the same name exists. If so ask the user to overwrite. FIXME: it is unknown if dfhack allows multiple modpacks with the same name, but it is avoided anyways.
-                    for(int i = 0; i < manager.modpacks.Count; i++) 
+                    for (int i = 0; i < manager.modpacks.Count; i++)
                     {
                         DFHModpack otherModlist = manager.modpacks[i];
-                        if(otherModlist.name == importedList.name)
+                        if (otherModlist.name == importedList.name)
                         {
                             // If the user said yes to overwrite, then do a more complex process, to allow the undo button to revert the imported changes.
                             DialogResult result = MessageBox.Show($"A modpack with the name {otherModlist.name} is already present. Would you like to overwrite it?", "Modlist Already Present", MessageBoxButtons.YesNo);
-                            if(result == DialogResult.Yes)
+                            if (result == DialogResult.Yes)
                             {
                                 // Set the combobox to the matching modlist.
                                 modifyingCombobox = true;
@@ -520,6 +612,26 @@ namespace ModHearth
                     MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+        }
+
+        private void leftSearchBox_TextChanged(object sender, EventArgs e)
+        {
+            leftModlistPanel.SearchFilter(leftSearchBox.Text);
+        }
+
+        private void rightSearchBox_TextChanged(object sender, EventArgs e)
+        {
+            rightModlistPanel.SearchFilter(rightSearchBox.Text);
+        }
+
+        private void leftSearchCloseButton_Click(object sender, EventArgs e)
+        {
+            leftSearchBox.Text = string.Empty;
+        }
+
+        private void rightSearchCloseButton_Click(object sender, EventArgs e)
+        {
+            rightSearchBox.Text = string.Empty;
         }
     }
 }

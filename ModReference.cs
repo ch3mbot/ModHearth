@@ -28,6 +28,10 @@ namespace ModHearth
         public string steamDescription;
         public string steamID;
 
+        public List<string> require_before_me;
+        public List<string> require_after_me;
+        public List<string> conflicts_with;
+
         // Path of mod folder, not path to info.
         public string path;
 
@@ -36,6 +40,9 @@ namespace ModHearth
 
         // Is this modref missing a version (one mod did this, dfhack set version to 1 so this matches it).
         public bool MissingVersion = false;
+
+        // Does this mod have mods it needs loaded before it, mods it needs loaded after it, or conflicts.
+        public bool problematic;
 
         // #FIXME: pointless constructor.
         public ModReference(string ID, string numericVersion, string displayedVersion, string earliestCompatibleNumericVersion, string earliestCompatibleDisplayedVersion, string author, string name, string description, string steamName, string steamDescription, string steamID, string path)
@@ -53,6 +60,11 @@ namespace ModHearth
             this.steamID = steamID;
             this.path = path;
             failed = false;
+            problematic = false;
+
+            require_before_me = new List<string>();
+            require_after_me = new List<string>();
+            conflicts_with = new List<string>();
         }
 
         // #TODO: do more testing with workshop mods, to see if there are more that break the pattern.
@@ -74,6 +86,10 @@ namespace ModHearth
             Match steamNameMatch = Regex.Match(modInfo, @"\[STEAM_TITLE\]:*(.*?)\n|\[STEAM_TITLE:*(.*?)\]", RegexOptions.IgnoreCase);
             Match steamDescMatch = Regex.Match(modInfo, @"\[STEAM_DESCRIPTION\]:*(.*?)\n|\[STEAM_DESCRIPTION:*(.*?)\]", RegexOptions.IgnoreCase);
             Match steamIDMatch = Regex.Match(modInfo, @"\[STEAM_FILE_ID\]:*(.*?)\n|\[STEAM_FILE_ID:*(.*?)\]", RegexOptions.IgnoreCase);
+
+            MatchCollection requireBeforeMatches = Regex.Matches(modInfo, @"\[REQUIRES_ID_BEFORE_ME\]:*(.*?)\n|\[REQUIRES_ID_BEFORE_ME:*(.*?)\]", RegexOptions.IgnoreCase);
+            MatchCollection requireAfterMatches = Regex.Matches(modInfo, @"\[REQUIRES_ID_AFTER_ME\]:*(.*?)\n|\[REQUIRES_ID_AFTER_ME:*(.*?)\]", RegexOptions.IgnoreCase);
+            MatchCollection conflictsMatches = Regex.Matches(modInfo, @"\[CONFLICTS_WITH_ID\]:*(.*?)\n|\[CONFLICTS_WITH_ID:*(.*?)\]", RegexOptions.IgnoreCase);
 
             // Handling of multiple groups since problem mods added more regex.
             string idValue = idMatch.Groups[1].Success ? idMatch.Groups[1].Value : idMatch.Groups[2].Value;
@@ -207,6 +223,28 @@ namespace ModHearth
             }
             else
                 steamID = steamIDValue;
+
+            // See if this mod has any extra needs. The groups are added, since one is empty.
+            require_before_me = new List<string>();
+            foreach (Match match in requireBeforeMatches)
+            {
+                require_before_me.Add(match.Groups[1].Value + match.Groups[2].Value);
+            }
+
+            require_after_me = new List<string>();
+            foreach (Match match in requireAfterMatches)
+            {
+                require_after_me.Add(match.Groups[1].Value + match.Groups[2].Value);
+            }
+
+            conflicts_with = new List<string>();
+            foreach (Match match in conflictsMatches)
+            {
+                conflicts_with.Add(match.Groups[1].Value + match.Groups[2].Value);
+            }
+
+            // Set problematic based on if this mod has extra needs.
+            problematic = require_before_me.Count != 0 || require_after_me.Count != 0 || conflicts_with.Count != 0;
         }
 
         // Use this mods ID and numvericVersion to create the DFHMod.

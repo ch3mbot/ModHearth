@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -11,7 +14,7 @@ namespace ModHearth
     /// <summary>
     /// Config class, to store folder information.
     /// </summary>
-    [System.Serializable]
+    [Serializable]
     public class ModHearthConfig
     {
         //path to DF.exe
@@ -19,6 +22,43 @@ namespace ModHearth
         public string DFFolderPath => Path.GetDirectoryName(DFEXEPath);
         public string ModsPath => Path.Combine(DFFolderPath, "Mods");
 
+    }
+
+    [Serializable]
+    public struct ModProblem
+    {
+        public string problemThrowerID;
+        public string problemID;
+
+        public enum ProblemType
+        {
+            MissingBefore,
+            MissingAfter,
+            ConflictPresent
+        };
+
+        public ProblemType problemType;
+
+        public ModProblem(string problemThrowerID, string problemID, ProblemType problemType)
+        {
+            this.problemThrowerID = problemThrowerID;
+            this.problemID = problemID;
+            this.problemType = problemType;
+        }
+
+        public override string ToString()
+        {
+            switch(problemType)
+            {
+                case ProblemType.MissingBefore:
+                    return $"Mod '{problemThrowerID}' requires mod '{problemID}' to be loaded before it.";
+                case ProblemType.MissingAfter:
+                    return $"Mod '{problemThrowerID}' requires mod '{problemID}' to be loaded after it.";
+                case ProblemType.ConflictPresent:
+                    return $"Mod '{problemThrowerID}' is incompatible with mod '{problemID}'.";
+            }
+            return "";
+        }
     }
 
     public class ModHearthManager
@@ -33,7 +73,7 @@ namespace ModHearth
         public DFHMod GetDFHackMod(string key) => modrefMap[key].ToDFHMod();
 
         // Get a ModReference given a DFHMod key.
-        public ModReference RefFromDFHack(DFHMod dfmod) => modrefMap[dfmod.ToString()];
+        public ModReference GetRefFromDFHMod(DFHMod dfmod) => modrefMap[dfmod.ToString()];
 
         // The sorted list of enabled DFHmods. This list is modified by the form, and when saved it overwrites the list of a ModPack.
         public List<DFHMod> enabledMods;
@@ -43,9 +83,6 @@ namespace ModHearth
 
         // The unsorted list of all available DFHmods
         public HashSet<DFHMod> modPool;
-
-        // #TODO: Implement tracking of a vanilla modlist.
-        private List<DFHMod> vanillaModlist;
 
         // Get the currently selected modpack
         public DFHModpack SelectedModlist => modpacks[selectedModlistIndex];
@@ -61,6 +98,9 @@ namespace ModHearth
 
         // Paths.
         private static readonly string configPath = "config.json";
+
+        // Mod problem tracker.
+        public List<ModProblem> modproblems;
 
         public ModHearthManager() 
         {
@@ -80,6 +120,24 @@ namespace ModHearth
             Console.WriteLine();
             Console.WriteLine($"Found {modrefMap.Count} mods and {modpacks.Count} modlists");
             Console.WriteLine();
+        }
+
+        // Run dfhack.
+        public void RunDFHack()
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("\nStarting " + config.DFEXEPath);
+            Console.ForegroundColor = ConsoleColor.White;
+
+            ProcessStartInfo processInfo = new ProcessStartInfo();
+            processInfo.FileName = config.DFEXEPath;
+            processInfo.ErrorDialog = true;
+            processInfo.UseShellExecute = false;
+            processInfo.RedirectStandardOutput = true;
+            processInfo.RedirectStandardError = true;
+            processInfo.WorkingDirectory = Path.GetDirectoryName(config.DFEXEPath);
+
+            Process.Start(processInfo);
         }
 
         // Alter the current modpack with enabledMods and save modpack list to dfhack file.
@@ -103,12 +161,14 @@ namespace ModHearth
             File.WriteAllText(dfHackModlistPath, modlistJson);
         }
 
-        // Regenerate enabled and disabled lists to match newly selected modpack.
         public void SetSelectedModpack(int index)
         {
+            // Regenerate enabled and disabled lists to match newly selected modpack.
             selectedModlistIndex = index;
-
             SetActiveMods(SelectedModlist.modlist);
+
+            // Find problems with newly selected modpack.
+            FindModlistProblems();
         }
 
         // Changes currently enabled and disabled mods based on the given list.
@@ -133,6 +193,7 @@ namespace ModHearth
             if (sourceLeft && destinationLeft)
             {
                 // Do nothing since the order of disabled mods doesn't matter.
+                return;
             }
             else if (!sourceLeft && !destinationLeft)
             {
@@ -149,7 +210,6 @@ namespace ModHearth
                     enabledMods.Add(dfm);
                 else
                     enabledMods.Insert(newIndex, dfm);
-
             }
             else if (!sourceLeft && destinationLeft)
             {
@@ -165,6 +225,61 @@ namespace ModHearth
                     enabledMods.Add(dfm);
                 else
                     enabledMods.Insert(newIndex, dfm);
+            }
+
+            // Refind mod problems since mod order changed.
+            FindModlistProblems();
+        }
+
+        // Go through modlist and scan for problems.
+        // Tuple representing problem has problem mod, int problemType (missing before, missing after, conflict present), and string modID.
+        public void FindModlistProblems()
+        {
+            // Set up list of problems to return.
+            modproblems = new List<ModProblem>();
+
+            // Set up a hashset of scanned mods and unscanned mods, for determining load order.
+            HashSet<string> scannedModIDs = new HashSet<string>();
+            HashSet<string> unscannedModIDs = new HashSet<string>();
+
+            // Add all enabled mod IDs to unscanned.
+            foreach (DFHMod dfm in enabledMods)
+            {
+                unscannedModIDs.Add(dfm.id);
+            }
+
+            // Loop through enabled mods, doing a mock load.
+            for (int i = 0; i < enabledMods.Count; i++)
+            {
+                DFHMod currentDFM = enabledMods[i];
+                ModReference currentMod = GetRefFromDFHMod(currentDFM);
+
+                // Check for problems.
+                if (currentMod.problematic)
+                {
+                    foreach (string beforeID in currentMod.require_before_me)
+                        if (!scannedModIDs.Contains(beforeID))
+                        {
+                            modproblems.Add(new ModProblem(currentDFM.id, beforeID, ModProblem.ProblemType.MissingBefore));
+                            //Console.WriteLine("Problem found: missing before mod with ID: " + beforeID + " mod needing is: " + currentDFM.id);
+                        }
+                    foreach (string afterID in currentMod.require_after_me)
+                        if (!unscannedModIDs.Contains(afterID))
+                        {
+                            modproblems.Add(new ModProblem(currentDFM.id, afterID, ModProblem.ProblemType.MissingAfter));
+                            //Console.WriteLine("Problem found: missing after mod with ID: " + afterID + " mod needing is: " + currentDFM.id);
+                        }
+                    foreach (string conflictID in currentMod.conflicts_with)
+                        if (scannedModIDs.Contains(conflictID) || unscannedModIDs.Contains(conflictID))
+                        {
+                            modproblems.Add(new ModProblem(currentDFM.id, conflictID, ModProblem.ProblemType.ConflictPresent));
+                            //Console.WriteLine("Problem found: conflict present mod with ID: " + conflictID + " mod needing is: " + currentDFM.id);
+                        }
+                }
+
+                // Move to scanned.
+                scannedModIDs.Add(currentDFM.id);
+                unscannedModIDs.Remove(currentDFM.id);
             }
         }
 
@@ -294,7 +409,9 @@ namespace ModHearth
             if(modpacks.Count == 0)
             {
                 DFHModpack newPack = new DFHModpack(true, new List<DFHMod>(), "Default");
-                // FIXME: generate vanilla modpack
+                // FIXME: generate vanilla modpack in a better way than this
+                newPack.modlist = GenerateVanillaModlist();
+
             }
 
             // Pop up a message notifying the user that the missing mods have been removed.
@@ -302,6 +419,57 @@ namespace ModHearth
             {
                 MessageBox.Show(missingMessage, "Missing Mods", MessageBoxButtons.OK);
             }
+        }
+
+        // Generated a vanilla modlist using manually generated mod ID list.
+        public List<DFHMod> GenerateVanillaModlist()
+        {
+            // Manually made vanilla modlist.
+            List<string> vanillaModIDList = new List<string>()
+                {
+                    "vanilla_text",
+                    "vanilla_languages",
+                    "vanilla_descriptors",
+                    "vanilla_materials",
+                    "vanilla_environment",
+                    "vanilla_plants",
+                    "vanilla_items",
+                    "vanilla_buildings",
+                    "vanilla_bodies",
+                    "vanilla_creatures",
+                    "vanilla_entities",
+                    "vanilla_reactions",
+                    "vanilla_interactions",
+                    "vanilla_descriptors_graphics",
+                    "vanilla_plants_graphics",
+                    "vanilla_items_graphics",
+                    "vanilla_buildings_graphics",
+                    "vanilla_creatures_graphics",
+                    "vanilla_world_map",
+                    "vanilla_interface",
+                    "vanilla_music",
+                };
+
+            // Get all mods that are probably vanilla.
+            Dictionary<string, DFHMod> vanillaPool = new Dictionary<string, DFHMod>();
+            foreach (DFHMod dfm in modPool)
+            {
+                if (dfm.id.ToLower().Contains("vanilla"))
+                {
+                    vanillaPool.Add(dfm.id, dfm);
+                    Console.WriteLine("added mod with id " +  dfm.id);
+                }
+            }
+
+            // Load vanilla mods into pack.
+            List<DFHMod> vanillaList = new List<DFHMod>();
+            for (int i = 0; i < vanillaModIDList.Count; i++)
+            {
+                Console.WriteLine("looking for mod with id " + vanillaModIDList[i]);
+                vanillaList.Add(vanillaPool[vanillaModIDList[i]]);
+            }
+
+            return vanillaList;
         }
 
         // Fix the config file if it's broken or missing.

@@ -90,7 +90,7 @@ namespace ModHearth
             Point pos = PointToClient(position);
 
             // Generate the list of visible controls.
-            List<Control> visList = GetVisibleModrefs();
+            List<ModRefPanel> visList = GetVisibleModrefs();
 
             // If there are no mods in the list, then return 0.
             if (visList.Count == 0)
@@ -122,15 +122,44 @@ namespace ModHearth
         }
 
         // Loop through controls and output a list of the visible ones.
-        public List<Control> GetVisibleModrefs()
+        public List<ModRefPanel> GetVisibleModrefs()
         {
-            List<Control> list = new List<Control>();
+            List<ModRefPanel> list = new List<ModRefPanel>();
             foreach(Control control in Controls) 
             {
-                if(control.Visible)
-                    list.Add(control);
+                if(control is ModRefPanel mrp && control.Visible)
+                    list.Add(mrp);
             }
             return list;
+        }
+
+        // Given a list of problems, highlight the appropriate problem mods, and add mouseover? TODO
+        public void ColorProblemMods(List<ModProblem> problems)
+        {
+            // Generate map of ID to list of problems.
+            Dictionary<string, List<ModProblem>> problemIDMap = new Dictionary<string, List<ModProblem>>();
+            foreach (ModProblem problem in problems)
+            {
+                if (!problemIDMap.ContainsKey(problem.problemThrowerID))
+                    problemIDMap.Add(problem.problemThrowerID, new List<ModProblem>() { problem });
+                else
+                    problemIDMap[problem.problemThrowerID].Add(problem);
+            }
+
+
+            // Go through visible modRefPanels and add problems to them
+            List<ModRefPanel> visibleRefs = GetVisibleModrefs();
+            for(int i = 0; i < visibleRefs.Count; i++)
+            {
+                if (problemIDMap.ContainsKey(visibleRefs[i].dfmodref.id))
+                {
+                    visibleRefs[i].SetProblems(problemIDMap[visibleRefs[i].dfmodref.id]);
+                }
+                else
+                {
+                    visibleRefs[i].RemoveProblems();
+                }
+            }
         }
 
         // Given a new list of what should be visible, updates order and fixes visibility.
@@ -144,6 +173,7 @@ namespace ModHearth
             FixVisibleChildren();
         }
 
+        // Fix the visible children with the appropriate function.
         private void FixVisibleChildren()
         {
             // Suspend layout, call the appropriate fix, then resume.
@@ -160,6 +190,7 @@ namespace ModHearth
             ResumeLayout(true);
         }
 
+        // Fix the order of visible mods. Set the visible ones in order and ignore others.
         private void FixVisibleOrderSorted()
         {
             for (int i = 0; i < Controls.Count; i++)
@@ -211,5 +242,17 @@ namespace ModHearth
                 return cp;
             }
         }
+
+        // Make elements visible/invisible based on filter.
+        public void SearchFilter(string filter)
+        {
+            // Loop through elements and apply filter
+            foreach(ModRefPanel modRefPanel in GetVisibleModrefs())
+            {
+                modRefPanel.SetFiltered(modRefPanel.modref.ID.Contains(filter));
+            }
+        }
+
+
     }
 }

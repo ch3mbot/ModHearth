@@ -49,6 +49,7 @@ namespace ModHearth
             label.AutoEllipsis = true;
             label.Font = Style.modRefFont;
             label.BackColor = Color.Transparent;
+            label.ForeColor = Style.modRefTextColor;
             label.Dock = DockStyle.Fill;
             this.Controls.Add(label);
 
@@ -63,6 +64,7 @@ namespace ModHearth
             this.MouseDown += ModrefPanel_MouseDown;
             this.MouseMove += ModrefPanel_MouseMove;
             this.MouseUp += ModrefPanel_MouseUp;
+            this.Click += ModrefPanel_Click;
 
             // Some style things.
             this.BackColor = Style.modRefColor;
@@ -108,6 +110,12 @@ namespace ModHearth
             form.ModrefMouseUp(lastPosition, this);
         }
 
+        // When this is clicked, show this mod info.
+        private void ModrefPanel_Click(object sender, EventArgs e)
+        {
+            form.ChangeModInfoDisplay(modref);
+        }
+
         // This control paints the background image on top of background color, for highlighting.
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -116,6 +124,48 @@ namespace ModHearth
             {
                 e.Graphics.DrawImage(BackgroundImage, ClientRectangle);
             };
+        }
+
+        // Set this to display problems.
+        public void SetProblems(List<ModProblem> problems)
+        {
+            // Set label color.
+            label.ForeColor = Style.modRefTextBadColor;
+
+            // Generate problem tooltip.
+            string problemToolTipString = "Problems:";
+            foreach (ModProblem problem in problems)
+            {
+                problemToolTipString += "\n" + problem.ToString();
+            }
+
+            // Set tooltips.
+            form.toolTip1.SetToolTip(this, problemToolTipString);
+            form.toolTip1.SetToolTip(label, problemToolTipString);
+        }
+
+        // Set this to be problem free.
+        public void RemoveProblems()
+        {
+            // Reset text color and tooltips.
+            label.ForeColor = Style.modRefTextColor;
+            form.toolTip1.SetToolTip(this, null);
+            form.toolTip1.SetToolTip(label, null);
+        }
+
+        // If a filter is applied and this is grayed out.
+        public void SetFiltered(bool active)
+        {
+            if (active)
+            {
+                label.ForeColor = Style.modRefTextColor;
+                label.Font = Style.modRefFont;
+            }
+            else
+            {
+                label.ForeColor = Style.modRefTextFilteredColor;
+                label.Font = Style.modRefStrikeFont;
+            }
         }
     }
 }
