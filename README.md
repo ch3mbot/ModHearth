@@ -5,9 +5,8 @@ This is a mod manager for the steam version of Dwarf Fortress, made to interact 
 
 ### Requirements:
 - Dwarf Fortress steam version
-> FIXME: mac/linux support by rewriting all of UI with something cross-platform instead of winforms
+> TODO: mac/linux support by rewriting all of UI with something cross-platform instead of winforms
 - Windows PC 
-> FIXME: uninstall and reinstall DFHack, check if it comes with mod manager by default
 - DFHack Installed
 - Game has been launched at least once
 
@@ -18,7 +17,11 @@ This is a mod manager for the steam version of Dwarf Fortress, made to interact 
 4. Locate Dwarf Fortress.exe
 
 ### Instructions
-> FIXME: should instructions be put here? what buttons do? Most is self explanatory.
+Information on the four buttons from left to right:
+- Save button: saves the current modlist to file.
+- Undo button: undoes changes made to the current modlist. Can only undo mod order/enable/disable changes, not renaming or deletion.
+- Play button: plays the game.
+- Reload button: not yet implemented.
 
 ## Contributor Information
 
@@ -33,7 +36,6 @@ DFHack only deals with mod name and mod version. This is all that's saved and lo
 These are set up to act like a value type.  
 
 #### ModReference
-> FIXME: mod dependency detection and storage here, integration into drag and drop system
 
 A more comprehensive object storing more information about mods, mostly for displaying. Is not saved.
 Can easily be converted to a DFHMod.
