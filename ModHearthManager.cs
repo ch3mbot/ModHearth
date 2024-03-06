@@ -1,7 +1,9 @@
-﻿using System;
+﻿using ModHearth.UI;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing.Text;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -17,10 +19,13 @@ namespace ModHearth
     [Serializable]
     public class ModHearthConfig
     {
-        //path to DF.exe
+        // Path to DF.exe
         public string DFEXEPath { get; set; }
         public string DFFolderPath => Path.GetDirectoryName(DFEXEPath);
         public string ModsPath => Path.Combine(DFFolderPath, "Mods");
+
+        // Should this be in lightmode?
+        public int theme { get; set; }
 
     }
 
@@ -98,6 +103,7 @@ namespace ModHearth
 
         // Paths.
         private static readonly string configPath = "config.json";
+        private static readonly string stylePath = "style.json";
 
         // Mod problem tracker.
         public List<ModProblem> modproblems;
@@ -122,8 +128,8 @@ namespace ModHearth
             Console.WriteLine();
         }
 
-        // Run dfhack.
-        public void RunDFHack()
+        // Run the game.
+        public void RunDwarfFortress()
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("\nStarting " + config.DFEXEPath);
@@ -327,8 +333,9 @@ namespace ModHearth
                     if (!modRef.failed)
                     {
                         // ModRef was successful, so add it to the lists.
-                        Console.WriteLine($"   Valid mod found: {modRef.name}");
-                        modrefMap.Add(modRef.DFHackCompatibleString(), modRef);
+                        string key = modRef.DFHackCompatibleString();
+                        Console.WriteLine($"   Valid mod found: {modRef.name}.");
+                        modrefMap.Add(key, modRef);
                         modPool.Add(modRef.ToDFHMod());
                     }
                     else
@@ -366,6 +373,9 @@ namespace ModHearth
             string missingMessage = $"Some mods missing. \nModlists will be modified to not require lost mods. \nMissing mods: ";
             HashSet<DFHMod> notFound = new HashSet<DFHMod>();
 
+            // If a default modpack exists.
+            bool defaultFound = false;
+
             // Go through modpacks, and go through their modlists, looking for mods that we don't have.
             for (int i = 0; i < modpacks.Count; i++)
             {
@@ -399,10 +409,19 @@ namespace ModHearth
                 if (modlist.@default)
                 {
                     SetSelectedModpack(i);
+                    defaultFound = true;
                 }
 
                 // Set modpacks[i] back to this modpack. #FIXME: why is this necessary? Isn't modpack a reference type?
                 modpacks[i] = modlist;
+            }
+
+            // Set default as backup.
+            if (!defaultFound)
+            {
+                SetSelectedModpack(0);
+                modpacks[0].@default = true;
+                SaveAllModpacks();
             }
 
             // Create default modpack if none present.
@@ -417,7 +436,7 @@ namespace ModHearth
             // Pop up a message notifying the user that the missing mods have been removed.
             if(modMissing)
             {
-                MessageBox.Show(missingMessage, "Missing Mods", MessageBoxButtons.OK);
+                LocationMessageBox.Show(missingMessage, "Missing Mods", MessageBoxButtons.OK);
             }
         }
 
@@ -472,6 +491,20 @@ namespace ModHearth
             return vanillaList;
         }
 
+        // Get the theme from config.
+        public int GetTheme()
+        {
+            return config.theme;
+        }
+        
+        // Save the theme to config file.
+        public void SetTheme(int theme)
+        {
+            config.theme = theme;
+            SaveConfigFile();
+        }
+
+
         // Fix the config file if it's broken or missing.
         public void FixConfig()
         {
@@ -495,10 +528,19 @@ namespace ModHearth
             SaveConfigFile();
         }
 
+        // Destroy the config file, to be remade.
+        public void DestroyConfig()
+        {
+            if (File.Exists(configPath))
+            {
+                File.Delete(configPath);
+            }
+        }
+
         // Get the path to the dwarf fortress executable from the user.
         private string GetDFPath()
         {
-            MessageBox.Show("Please find the path to your Dwarf Fortress.exe.", "DF.exe location", MessageBoxButtons.OK);
+            LocationMessageBox.Show("Please find the path to your Dwarf Fortress.exe.", "DF.exe location", MessageBoxButtons.OK);
             OpenFileDialog dfFileDialog = new OpenFileDialog();
             dfFileDialog.Filter = "Executable files (*.exe)|Dwarf Fortress.exe";
             DialogResult result = dfFileDialog.ShowDialog();
@@ -540,15 +582,79 @@ namespace ModHearth
             catch (Exception ex)
             {
                 Console.WriteLine($"An error occurred: {ex.Message}");
+                config = null;
+                FixConfig();
+
             }
         }
 
-        // Save the config file to file.
+        // Save the config to file.
         public void SaveConfigFile()
         {
             Console.WriteLine("Config saved.");
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                WriteIndented = true // Enable pretty formatting
+            };
             string jsonContent = JsonSerializer.Serialize(config);
             File.WriteAllText(configPath, jsonContent);
+        }
+
+        // Try to load style file.
+        public Style LoadStyle()
+        {
+            Style style = new Style();
+
+            try
+            {
+                if (File.Exists(stylePath))
+                {
+                    Console.WriteLine("Style file found.");
+                    string jsonContent = File.ReadAllText(stylePath);
+
+                    // Deserialize the JSON content into an object
+                    Style foundStyle = JsonSerializer.Deserialize<Style>(jsonContent);
+
+                    // If broken, save working one, otherwise, use found one.
+                    if (foundStyle == null)
+                    {
+                        Console.WriteLine("Style file borked. Style regenerated.");
+                        style = Style.lightModeStyle();
+                        SaveStyle(style);
+                    }
+                    else
+                    {
+                        style = foundStyle;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Style file missing. New style reated.");
+                    style = Style.lightModeStyle();
+                    SaveStyle(style);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+
+
+            // Set global instance and return.
+            Style.instance = style;
+            return style;
+        } 
+
+        // Save the style to file.
+        private void SaveStyle(Style style)
+        {
+            Console.WriteLine("Style saved.");
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                WriteIndented = true // Enable pretty formatting
+            };
+            string jsonContent = JsonSerializer.Serialize(style, options);
+            File.WriteAllText(stylePath, jsonContent);
         }
         #endregion
     }

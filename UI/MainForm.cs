@@ -1,17 +1,21 @@
 ﻿using Microsoft.VisualBasic;
+using ModHearth.UI;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.JavaScript;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.ComponentModel.Design.ObjectSelectorEditor;
 
 namespace ModHearth
 {
@@ -34,17 +38,28 @@ namespace ModHearth
         private bool changesMarked = false;
 
         // Tracking which modrefPanels are highlighted.
-        private HashSet<Control> highlightAffected = new HashSet<Control>();
+        private HashSet<ModRefPanel> highlightAffected = new HashSet<ModRefPanel>();
 
         // ComboBox handling.
         private int lastIndex;
         private bool modifyingCombobox = false;
 
-        // ToolTip
+        // ToolTip.
         public ToolTip toolTip1;
 
+        // Light mode tracking.
+        private int lastStyle;
+
+        // For when the form is restarting itself.
+        private bool selfClosing;
+
+        // The one and only instance of this form, for other classes to reference.
+        public static MainForm instance;
         public MainForm()
         {
+            // Set global instance.
+            instance = this;
+
             // Make console function.
             AllocConsole();
             Console.ForegroundColor = ConsoleColor.White;
@@ -53,12 +68,16 @@ namespace ModHearth
             InitializeComponent();
             manager = new ModHearthManager();
 
+            // Set combobox for theme.
+            lastStyle = manager.GetTheme();
+            themeComboBox.SelectedIndex = lastStyle;
+
+            // Get style and fix colors.
+            FixStyle();
+
             // Set up tooltip manager and add some tooltips.
             SetupTooltipManager();
             AddTooltips();
-
-            // TODO: refreshing isn't implemented yet.
-            refreshModsButton.Enabled = false;
 
             // Disable/enable change related buttons.
             SetChangesMade(false);
@@ -69,6 +88,75 @@ namespace ModHearth
 
             // Apply some post load fixes.
             this.Load += PostLoadFix;
+            this.FormClosing += CloseConfirmation;
+
+            // Fix resizing issues.
+            this.Resize += ResizeFixes;
+
+            // Do not self close by default.
+            selfClosing = false;
+        }
+
+        // Resize childen of panels.
+        private void ResizeFixes(object sender, EventArgs e)
+        {
+            leftModlistPanel.FixChildrenStyle();
+            rightModlistPanel.FixChildrenStyle();
+        }
+
+        private void CloseConfirmation(object sender, FormClosingEventArgs e)
+        {
+            // If this form is closing itself, do not interfere.
+            if (selfClosing)
+                return;
+
+            // Ask the user to confirm closing the application.
+            string message = "Are you sure you want to exit?";
+            if (changesMade)
+            {
+                message = message + "There are unsaved changes. ";
+            }
+
+            if (LocationMessageBox.Show(message, "Exit", MessageBoxButtons.YesNo) == DialogResult.No)
+                e.Cancel = true;
+        }
+
+        // Get style and fix colors.
+        private void FixStyle()
+        {
+            Style style = manager.LoadStyle();
+
+            // Force lightmode if true.
+            if (manager.GetTheme() == 0)
+            {
+                style.formColor = Color.White;
+                style.textColor = Color.Black;
+
+                style.modRefPanelColor = Color.LightGray;
+                style.modRefColor = Color.LightGray;
+                style.modRefHighlightColor = Color.AliceBlue;
+                style.modRefTextColor = Color.Black;
+                style.modRefTextBadColor = Color.Red;
+                style.modRefTextFilteredColor = Color.DarkGray;
+            }
+
+            this.BackColor = style.formColor;
+            modTitleLabel.ForeColor = style.textColor;
+            modDescriptionLabel.ForeColor = style.textColor;
+
+            leftModlistPanel.BackColor = style.modRefPanelColor;
+            rightModlistPanel.BackColor = style.modRefPanelColor;
+            leftModlistPanel.FixChildrenStyle();
+            rightModlistPanel.FixChildrenStyle();
+
+            leftSearchBox.ForeColor = style.textColor;
+            rightSearchBox.ForeColor = style.textColor;
+            leftSearchBox.BackColor = style.modRefPanelColor;
+            rightSearchBox.BackColor = style.modRefPanelColor;
+            leftSearchBox.BorderStyle = BorderStyle.None;
+            rightSearchBox.BorderStyle = BorderStyle.None;
+
+
         }
 
         private void PostLoadFix(object sender, EventArgs e)
@@ -124,6 +212,8 @@ namespace ModHearth
         // Generate a full list of controls for each side.
         private void GenerateModrefControls()
         {
+            // Make output pretty.
+            Console.WriteLine();
             GenerateModrefControlSided(leftModlistPanel, new List<DFHMod>(manager.disabledMods), true);
             GenerateModrefControlSided(rightModlistPanel, new List<DFHMod>(manager.enabledMods), false);
         }
@@ -199,6 +289,10 @@ namespace ModHearth
                 index = indexR;
                 destinationPanel = rightModlistPanel;
             }
+
+            // If the source and destination wat the left panel, return, since the left panel is insorted.
+            if (modrefPanel.vParent == leftModlistPanel && destinationPanel == LeftModlistPanel)
+                return;
 
             // Changes have been made.
             SetAndMarkChanges(true);
@@ -300,9 +394,9 @@ namespace ModHearth
             // Make the right panel show any problems that pop up.
             rightModlistPanel.ColorProblemMods(manager.modproblems);
 
-            // Make sure filters are empty.
-            leftSearchBox.Text = string.Empty;
-            rightSearchBox.Text = string.Empty;
+            // Force refrash search boxes.
+            leftSearchBox.Text = leftSearchBox.Text + "";
+            rightSearchBox.Text = rightSearchBox.Text + "";
         }
 
         // Highlight the panel at and before index, if they exist.
@@ -310,25 +404,26 @@ namespace ModHearth
         {
             if (index > 0)
             {
-                Control selected = parentPanel.GetVisibleControlAtIndex(index - 1);
-                selected.BackgroundImage = Resource1.highlight_bottom;
+                ModRefPanel selected = parentPanel.GetVisibleControlAtIndex(index - 1) as ModRefPanel;
+                selected.SetHighlight(false, true);
                 highlightAffected.Add(selected);
             }
             if (index < parentPanel.memberMods.Count)
             {
-                Control selected = parentPanel.GetVisibleControlAtIndex(index);
-                selected.BackgroundImage = Resource1.highlight_top;
+                ModRefPanel selected = parentPanel.GetVisibleControlAtIndex(index) as ModRefPanel;
+                selected.SetHighlight(true, false);
                 highlightAffected.Add(selected);
             }
         }
 
-        // Loop through all highlighted panels and unhighlight them.
+        // Loop through all highlighted panels and unhighlight them, then clear hashset.
         private void UnsetSurroundingToHighlight()
         {
-            foreach (Control c in highlightAffected)
+            foreach (ModRefPanel panel in highlightAffected)
             {
-                c.BackgroundImage = null;
+                panel.SetHighlight(false, false);
             }
+            highlightAffected.Clear();
         }
 
         // Set changesMade, fix buttons, and mark/unmark changes.
@@ -357,7 +452,7 @@ namespace ModHearth
         private void undoChangesButton_Click(object sender, EventArgs e)
         {
             // Ask the user if they really want to undo their changes.
-            DialogResult result = MessageBox.Show("Are you sure you want to reset modlist changes?", "Undo changes", MessageBoxButtons.YesNo);
+            DialogResult result = LocationMessageBox.Show("Are you sure you want to reset modlist changes?", "Undo changes", MessageBoxButtons.YesNo);
             if (result == DialogResult.Yes)
             {
                 // Undo our changes and immediately refresh
@@ -365,16 +460,42 @@ namespace ModHearth
             }
         }
 
-        // TODO: rune the dwarf fortress executable.
+        // Run the dwarf fortress executable.
         private void playGameButton_Click(object sender, EventArgs e)
         {
-            manager.RunDFHack();
+            manager.RunDwarfFortress();
         }
 
-        // TODO: rescan mod folders and recreate controls for modlistPanels. For things like downloading non workshop mods, or mod creation.
-        private void refreshModsButton_Click(object sender, EventArgs e)
+        // Restart the application, to look for new mods. #TODO: could me bade to rescan mods, but a full restart is easiest.
+        private void restartButton_Click(object sender, EventArgs e)
         {
+            // If changes were made, ask if the user wants to save them first. If no changes are made, ask if the user really wants to do this.
+            if (changesMade)
+            {
+                DialogResult result = LocationMessageBox.Show($"You have unsaved changes to '{manager.SelectedModlist.name}', do you want to save before restarting the application?", "Unsaved Changes", MessageBoxButtons.YesNoCancel);
 
+                if (result == DialogResult.Yes)
+                {
+                    // If yes, save changes before reloading.
+                    SaveCurrentModpack();
+                }
+                else if (result == DialogResult.No)
+                {
+                    // If no, do nothing, since the application will reload.
+                }
+                else
+                {
+                    // If cancel, set index to last, then return, so as not to proceed with swap.
+                    return;
+                }
+            }
+            else
+                if (LocationMessageBox.Show("Are you sure you want reload? Application will restart.", "Application Reload", MessageBoxButtons.YesNo) == DialogResult.No)
+                return;
+
+            // Mark that we are closing and restart the application.
+            selfClosing = true;
+            Application.Restart();
         }
 
         private void SaveCurrentModpack()
@@ -412,7 +533,7 @@ namespace ModHearth
             // If changes were made, prompt user to either save changes, discard changes, or cancel index change.
             if (changesMade)
             {
-                DialogResult result = MessageBox.Show($"You have unsaved changes to {manager.SelectedModlist.name}, do you want to save before continuing?", "Unsaved Changes", MessageBoxButtons.YesNoCancel);
+                DialogResult result = LocationMessageBox.Show($"You have unsaved changes to '{manager.SelectedModlist.name}', do you want to save before continuing?", "Unsaved Changes", MessageBoxButtons.YesNoCancel);
                 if (result == DialogResult.Yes)
                 {
                     // If yes, save changes before proceeding with swap.
@@ -494,7 +615,7 @@ namespace ModHearth
         // Deletes a modpack, and saves immediately. This can only be pressed when no unsaved changes. Fails if there is only one modpack left.
         private void deleteListButton_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show($"Are you sure you want to delete {manager.SelectedModlist.name}? This is final.", "Delete modlist", MessageBoxButtons.YesNo);
+            DialogResult result = LocationMessageBox.Show($"Are you sure you want to delete {manager.SelectedModlist.name}? This is final.", "Delete modlist", MessageBoxButtons.YesNo);
             if (result == DialogResult.Yes)
             {
                 // Undo our changes and fix buttons.
@@ -503,7 +624,7 @@ namespace ModHearth
                 // Minimum one modpack FIXME: this is just because not having any modlists needs extra logic. Would be easy enough to generate a vanilla modpack if all are gone though.
                 if (manager.modpacks.Count == 1)
                 {
-                    MessageBox.Show("You cannot delete the last modlist.", "Failed", MessageBoxButtons.OK);
+                    LocationMessageBox.Show("You cannot delete the last modlist.", "Failed", MessageBoxButtons.OK);
                     return;
                 }
 
@@ -547,7 +668,7 @@ namespace ModHearth
                         if (otherModlist.name == importedList.name)
                         {
                             // If the user said yes to overwrite, then do a more complex process, to allow the undo button to revert the imported changes.
-                            DialogResult result = MessageBox.Show($"A modpack with the name {otherModlist.name} is already present. Would you like to overwrite it?", "Modlist Already Present", MessageBoxButtons.YesNo);
+                            DialogResult result = LocationMessageBox.Show($"A modpack with the name {otherModlist.name} is already present. Would you like to overwrite it?", "Modlist Already Present", MessageBoxButtons.YesNo);
                             if (result == DialogResult.Yes)
                             {
                                 // Set the combobox to the matching modlist.
@@ -577,7 +698,7 @@ namespace ModHearth
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    LocationMessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK);
                 }
             }
         }
@@ -605,33 +726,64 @@ namespace ModHearth
                     string exportString = JsonSerializer.Serialize(manager.SelectedModlist, options);
                     File.WriteAllText(filePath, exportString);
 
-                    MessageBox.Show("File saved successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    LocationMessageBox.Show("File saved successfully.", "Success", MessageBoxButtons.OK);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    LocationMessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK);
                 }
             }
         }
 
+        // On search change, notify panel.
         private void leftSearchBox_TextChanged(object sender, EventArgs e)
         {
-            leftModlistPanel.SearchFilter(leftSearchBox.Text);
+            leftModlistPanel.SearchFilter(leftSearchBox.Text.ToLower());
         }
+        // On search change, notify panel.
 
         private void rightSearchBox_TextChanged(object sender, EventArgs e)
         {
-            rightModlistPanel.SearchFilter(rightSearchBox.Text);
+            rightModlistPanel.SearchFilter(rightSearchBox.Text.ToLower());
         }
 
+        // Remove the search filter.
         private void leftSearchCloseButton_Click(object sender, EventArgs e)
         {
             leftSearchBox.Text = string.Empty;
         }
 
+        // Remove the search filter.
         private void rightSearchCloseButton_Click(object sender, EventArgs e)
         {
             rightSearchBox.Text = string.Empty;
+        }
+
+        // Delete the config file and restart the application. TODO: create actual config editing window
+        private void redoConfigButton_Click(object sender, EventArgs e)
+        {
+            // Ask before proceeding.
+            //DialogResult result = LocationMessageBox.Show("Are you sure you want to reset config file? Application will restart.", "Redo Config", MessageBoxButtons.YesNo);
+            DialogResult result = LocationMessageBox.Show("Are you sure you want to reset config file? Application will restart.", "Redo Config", MessageBoxButtons.YesNo);
+            if (result == DialogResult.No)
+                return;
+
+            manager.DestroyConfig();
+            selfClosing = true;
+            Application.Restart();
+        }
+
+        // If the theme index was changed, save the change to manager config file, and fix our style.
+        private void themeComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Console.WriteLine($"style change from {lastStyle} to {themeComboBox.SelectedIndex}");
+
+            // Do nothing if style hasn't changed.
+            if (themeComboBox.SelectedIndex == lastStyle)
+                return;
+            lastStyle = themeComboBox.SelectedIndex;
+            manager.SetTheme(themeComboBox.SelectedIndex);
+            FixStyle();
         }
     }
 }

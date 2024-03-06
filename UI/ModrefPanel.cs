@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
-namespace ModHearth
+namespace ModHearth.UI
 {
     /// <summary>
     /// A panel representing a mod, to be dragged and dropped for GUI based modpack editing.
@@ -36,6 +36,10 @@ namespace ModHearth
         // Keep track of the last position the mouse was when this is being dragged.
         private Point lastPosition;
 
+        // Should this be highlighted up or down
+        private bool highlightUp;
+        private bool highlightDown;
+
         public ModRefPanel(ModReference modref, MainForm form)
         {
             // Basic references.
@@ -47,67 +51,75 @@ namespace ModHearth
             label.Text = modref.name + " " + modref.displayedVersion;
             label.AutoSize = false;
             label.AutoEllipsis = true;
-            label.Font = Style.modRefFont;
             label.BackColor = Color.Transparent;
-            label.ForeColor = Style.modRefTextColor;
             label.Dock = DockStyle.Fill;
-            this.Controls.Add(label);
+            Controls.Add(label);
 
             // Set up anchors.
-            this.Margin = Style.modRefPadding;
+            Margin = Style.modRefPadding;
 
             // Mouse function mapping.
             label.MouseDown += ModrefPanel_MouseDown;
             label.MouseMove += ModrefPanel_MouseMove;
             label.MouseUp += ModrefPanel_MouseUp;
 
-            this.MouseDown += ModrefPanel_MouseDown;
-            this.MouseMove += ModrefPanel_MouseMove;
-            this.MouseUp += ModrefPanel_MouseUp;
-            this.Click += ModrefPanel_Click;
+            MouseDown += ModrefPanel_MouseDown;
+            MouseMove += ModrefPanel_MouseMove;
+            MouseUp += ModrefPanel_MouseUp;
+            Click += ModrefPanel_Click;
 
             // Some style things.
-            this.BackColor = Style.modRefColor;
-            this.BorderStyle = Style.modRefBorder;
-            this.Margin = Style.modRefPadding;
+            BorderStyle = Style.modRefBorder;
+            Margin = Style.modRefPadding;
 
-            this.Visible = true;
+            Visible = true;
+            highlightUp = false;
+            highlightDown = false;
+
+            //BackgroundImage = Resource1.transparent_square;
         }
 
         // This is run once when this object is added to its parent.
         public void Initialize()
         {
             // Set width and height properly.
-            this.Width = Parent.Width - Margin.Left - Margin.Right - SystemInformation.VerticalScrollBarWidth;
-            label.Width = this.Width;
-            this.Height = Style.modRefHeight;
+            Width = Parent.Width - Margin.Left - Margin.Right - SystemInformation.VerticalScrollBarWidth;
+            label.Width = Width;
+            Height = Style.modRefHeight;
+
+            // Fix colors as well.
+            label.Font = Style.modRefFont;
+            label.ForeColor = Style.instance.modRefTextColor;
+            BackColor = Style.instance.modRefColor;
         }
 
-        // On mouse down, set isDragging to true, this to be the draggee, and change cursor.
+        // On mouse down, set isDragging to true, this to be the draggee, and change cursor. Also change draggee color.
         private void ModrefPanel_MouseDown(object sender, MouseEventArgs e)
         {
             isDragging = true;
             draggee = this;
             Cursor.Current = new Cursor(Resource1.grab_cursor.GetHicon());
+            draggee.BackColor = Style.instance.modRefHighlightColor;
         }
 
         // While this is being dragged and gets moved, notify the form, and update the last recorded position.
         private void ModrefPanel_MouseMove(object sender, MouseEventArgs e)
         {
-            if(isDragging)
+            if (isDragging)
             {
-                Point mousePos = (Control.MousePosition);
+                Point mousePos = MousePosition;
                 form.ModrefMouseMove(mousePos);
                 lastPosition = mousePos;
             }
         }
 
-        // When this panel is dropped, reset isDragging, reset the cursor, and notify the form.
+        // When this panel is dropped, reset isDragging, reset the cursor, and notify the form. Also reset draggee color.
         private void ModrefPanel_MouseUp(object sender, MouseEventArgs e)
         {
             isDragging = false;
             Cursor.Current = Cursors.Default;
             form.ModrefMouseUp(lastPosition, this);
+            draggee.BackColor = Style.instance.modRefColor;
         }
 
         // When this is clicked, show this mod info.
@@ -120,17 +132,36 @@ namespace ModHearth
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            if (BackgroundImage != null)
+
+            // Style based highlighting.
+            if(highlightUp)
             {
-                e.Graphics.DrawImage(BackgroundImage, ClientRectangle);
-            };
+                Rectangle topRect = new Rectangle(0, 0, this.Width, 2);
+                e.Graphics.FillRectangle(new SolidBrush(Style.instance.modRefHighlightColor), topRect);
+            }
+            else if (highlightDown)
+            {
+                Rectangle bottomRect = new Rectangle(0, this.Height - 2, this.Width, 2);
+                e.Graphics.FillRectangle(new SolidBrush(Style.instance.modRefHighlightColor), bottomRect);
+            }
+        }
+
+        // Set the highlight status of this panel. Invalidate on change.
+        public void SetHighlight(bool top, bool bottom)
+        {
+            // If not changed, do nothing.
+            if (!(top != highlightUp || bottom != highlightDown))
+                return;
+            highlightUp = top; 
+            highlightDown = bottom;
+            Invalidate();
         }
 
         // Set this to display problems.
         public void SetProblems(List<ModProblem> problems)
         {
             // Set label color.
-            label.ForeColor = Style.modRefTextBadColor;
+            label.ForeColor = Style.instance.modRefTextBadColor;
 
             // Generate problem tooltip.
             string problemToolTipString = "Problems:";
@@ -148,7 +179,7 @@ namespace ModHearth
         public void RemoveProblems()
         {
             // Reset text color and tooltips.
-            label.ForeColor = Style.modRefTextColor;
+            label.ForeColor = Style.instance.modRefTextColor;
             form.toolTip1.SetToolTip(this, null);
             form.toolTip1.SetToolTip(label, null);
         }
@@ -158,12 +189,12 @@ namespace ModHearth
         {
             if (active)
             {
-                label.ForeColor = Style.modRefTextColor;
+                label.ForeColor = Style.instance.modRefTextColor;
                 label.Font = Style.modRefFont;
             }
             else
             {
-                label.ForeColor = Style.modRefTextFilteredColor;
+                label.ForeColor = Style.instance.modRefTextFilteredColor;
                 label.Font = Style.modRefStrikeFont;
             }
         }

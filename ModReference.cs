@@ -73,6 +73,7 @@ namespace ModHearth
         {
             // Set path.
             this.path = path;
+            this.failed = false;
 
             // Match for each field. Regex got extra complex with since one or two mods did things like '[ID]:modid' instead of '[ID:modid]' for some reason.
             Match idMatch = Regex.Match(modInfo, @"\[ID\]:*(.*?)\n|\[ID:*(.*?)\]", RegexOptions.IgnoreCase);
@@ -148,9 +149,15 @@ namespace ModHearth
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine($"   Recoverable Mod Error: Mod missing earliest compatible numeric or earliest compatible display version. Path: {path}");
                 Console.ForegroundColor = ConsoleColor.White;
+
+                earliestCompatibleNumericVersion = numericVersion;
+                earliestCompatibleDisplayedVersion = displayedVersion;
             }
-            earliestCompatibleNumericVersion = earliestNumVerValue;
-            earliestCompatibleDisplayedVersion = earliestDispVerValue;
+            else
+            {
+                earliestCompatibleNumericVersion = earliestNumVerValue;
+                earliestCompatibleDisplayedVersion = earliestDispVerValue;
+            }
 
             // If the author match fails, unfortunate but not going to affect function.
             if (!authMatch.Success)
