@@ -5,13 +5,12 @@ This is a mod manager for the steam version of Dwarf Fortress, made to interact 
 
 ### Requirements:
 - Dwarf Fortress steam version
-> TODO: mac/linux support by rewriting all of UI with something cross-platform instead of winforms
-- Windows PC 
+- Windows PC (TODO: eventual mac and linux support planned)
 - DFHack Installed
 - Game has been launched at least once
 
 ### Installation Guide
-1. Go to [releases](https://www.google.ca) and download the most recent version 
+1. Go to [releases]([https://www.google.ca](https://github.com/ch3mbot/ModHearth/releases/tag/v0.0.3-beta)) and download the most recent version 
 2. Extract zip to suitable location
 3. Run ModHearth.exe
 4. Locate Dwarf Fortress.exe
@@ -36,7 +35,6 @@ DFHack only deals with mod name and mod version. This is all that's saved and lo
 These are set up to act like a value type.  
 
 #### ModReference
-
 A more comprehensive object storing more information about mods, mostly for displaying. Is not saved.
 Can easily be converted to a DFHMod.
 
