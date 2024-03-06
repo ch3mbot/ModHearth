@@ -32,4 +32,5 @@ C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.pdb
 C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ModHearth.genruntimeconfig.cache
 C:\Users\chembot\source\repos\ModHearth\obj\Debug\net7.0-windows\ref\ModHearth.dll
 G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.MainForm.resources
-G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.VerticalFlowPanel.resources
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.UI.VerticalFlowPanel.resources
+G:\Git Projects\ModHearth\ModHearth\obj\Debug\net7.0-windows\ModHearth.UI.LocationMessageBox.resources

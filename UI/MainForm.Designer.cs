@@ -1,4 +1,6 @@
-﻿namespace ModHearth
+﻿using ModHearth.UI;
+
+namespace ModHearth
 {
     partial class MainForm
     {
@@ -28,6 +30,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             rightModlistPanel = new VerticalFlowPanel();
             leftModlistPanel = new VerticalFlowPanel();
             modpackComboBox = new ComboBox();
@@ -40,12 +43,14 @@
             leftSearchBox = new TextBox();
             outerTableLayout = new TableLayoutPanel();
             rightPanel = new Panel();
+            themeComboBox = new ComboBox();
+            redoConfigButton = new Button();
             exportButton = new Button();
             importButton = new Button();
             newListButton = new Button();
             deleteListButton = new Button();
             renameListButton = new Button();
-            refreshModsButton = new Button();
+            reloadButton = new Button();
             playGameButton = new Button();
             undoChangesButton = new Button();
             saveButton = new Button();
@@ -192,12 +197,14 @@
             // 
             // rightPanel
             // 
+            rightPanel.Controls.Add(themeComboBox);
+            rightPanel.Controls.Add(redoConfigButton);
             rightPanel.Controls.Add(exportButton);
             rightPanel.Controls.Add(importButton);
             rightPanel.Controls.Add(newListButton);
             rightPanel.Controls.Add(deleteListButton);
             rightPanel.Controls.Add(renameListButton);
-            rightPanel.Controls.Add(refreshModsButton);
+            rightPanel.Controls.Add(reloadButton);
             rightPanel.Controls.Add(modpackComboBox);
             rightPanel.Controls.Add(playGameButton);
             rightPanel.Controls.Add(undoChangesButton);
@@ -206,6 +213,27 @@
             rightPanel.Name = "rightPanel";
             rightPanel.Size = new Size(194, 798);
             rightPanel.TabIndex = 0;
+            // 
+            // themeComboBox
+            // 
+            themeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            themeComboBox.FormattingEnabled = true;
+            themeComboBox.Items.AddRange(new object[] { "light theme", "dark theme" });
+            themeComboBox.Location = new Point(70, 743);
+            themeComboBox.Name = "themeComboBox";
+            themeComboBox.Size = new Size(121, 23);
+            themeComboBox.TabIndex = 17;
+            themeComboBox.SelectedIndexChanged += themeComboBox_SelectedIndexChanged;
+            // 
+            // redoConfigButton
+            // 
+            redoConfigButton.Location = new Point(101, 772);
+            redoConfigButton.Name = "redoConfigButton";
+            redoConfigButton.Size = new Size(90, 23);
+            redoConfigButton.TabIndex = 16;
+            redoConfigButton.Text = "Redo Config";
+            redoConfigButton.UseVisualStyleBackColor = true;
+            redoConfigButton.Click += redoConfigButton_Click;
             // 
             // exportButton
             // 
@@ -257,15 +285,15 @@
             renameListButton.UseVisualStyleBackColor = true;
             renameListButton.Click += renameModpackButton_Click;
             // 
-            // refreshModsButton
+            // reloadButton
             // 
-            refreshModsButton.Image = Resource1.reloadIcon;
-            refreshModsButton.Location = new Point(150, 3);
-            refreshModsButton.Name = "refreshModsButton";
-            refreshModsButton.Size = new Size(43, 43);
-            refreshModsButton.TabIndex = 10;
-            refreshModsButton.UseVisualStyleBackColor = true;
-            refreshModsButton.Click += refreshModsButton_Click;
+            reloadButton.Image = Resource1.reloadIcon;
+            reloadButton.Location = new Point(150, 3);
+            reloadButton.Name = "reloadButton";
+            reloadButton.Size = new Size(43, 43);
+            reloadButton.TabIndex = 10;
+            reloadButton.UseVisualStyleBackColor = true;
+            reloadButton.Click += restartButton_Click;
             // 
             // playGameButton
             // 
@@ -348,6 +376,8 @@
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1264, 828);
             Controls.Add(outerTableLayout);
+            ForeColor = SystemColors.ControlText;
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "MainForm";
             Text = "Mod Hearth";
             modlistColumnTableLayout.ResumeLayout(false);
@@ -369,7 +399,7 @@
         private TableLayoutPanel modlistColumnTableLayout;
         private TableLayoutPanel outerTableLayout;
         private Panel rightPanel;
-        private Button refreshModsButton;
+        private Button reloadButton;
         private Button playGameButton;
         private Button undoChangesButton;
         private Button saveButton;
@@ -388,5 +418,7 @@
         private Panel rightSearchPanel;
         private Button rightSearchCloseButton;
         private TextBox rightSearchBox;
+        private Button redoConfigButton;
+        private ComboBox themeComboBox;
     }
 }

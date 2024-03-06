@@ -7,10 +7,15 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <StartupObject>ModHearth.Program</StartupObject>
+    <ApplicationIcon>modhearth_icon_v1 (1).ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Update="MainForm.cs">
+    <Content Include="modhearth_icon_v1 (1).ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="UI\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Resource1.Designer.cs">
@@ -32,5 +37,4 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
 </Project>
