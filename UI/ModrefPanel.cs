@@ -40,6 +40,9 @@ namespace ModHearth.UI
         private bool highlightUp;
         private bool highlightDown;
 
+        // Keep track of if this is a problem
+        private bool problem;
+
         public ModRefPanel(ModReference modref, MainForm form)
         {
             // Basic references.
@@ -62,11 +65,14 @@ namespace ModHearth.UI
             label.MouseDown += ModrefPanel_MouseDown;
             label.MouseMove += ModrefPanel_MouseMove;
             label.MouseUp += ModrefPanel_MouseUp;
+            label.Click += ModrefPanel_Click;
+            label.DoubleClick += ModrefPanel_DoubleClick;
 
             MouseDown += ModrefPanel_MouseDown;
             MouseMove += ModrefPanel_MouseMove;
             MouseUp += ModrefPanel_MouseUp;
             Click += ModrefPanel_Click;
+            DoubleClick += ModrefPanel_DoubleClick;
 
             // Some style things.
             BorderStyle = Style.modRefBorder;
@@ -75,6 +81,7 @@ namespace ModHearth.UI
             Visible = true;
             highlightUp = false;
             highlightDown = false;
+            problem = false;
 
             //BackgroundImage = Resource1.transparent_square;
         }
@@ -128,6 +135,13 @@ namespace ModHearth.UI
             form.ChangeModInfoDisplay(modref);
         }
 
+        // When this is double clicked, show info and do transfer.
+        private void ModrefPanel_DoubleClick(object sender, EventArgs e)
+        {
+            form.ChangeModInfoDisplay(modref);
+            form.ModRefDoubleClicked(this);
+        }
+
         // This control paints the background image on top of background color, for highlighting.
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -157,28 +171,26 @@ namespace ModHearth.UI
             Invalidate();
         }
 
-        // Set this to display problems.
+        // Set label color and tooltips.
         public void SetProblems(List<ModProblem> problems)
         {
-            // Set label color.
+            problem = true;
             label.ForeColor = Style.instance.modRefTextBadColor;
 
-            // Generate problem tooltip.
             string problemToolTipString = "Problems:";
             foreach (ModProblem problem in problems)
             {
                 problemToolTipString += "\n" + problem.ToString();
             }
 
-            // Set tooltips.
             form.toolTip1.SetToolTip(this, problemToolTipString);
             form.toolTip1.SetToolTip(label, problemToolTipString);
         }
 
-        // Set this to be problem free.
+        // Reset text color and tooltips.
         public void RemoveProblems()
         {
-            // Reset text color and tooltips.
+            problem = false;
             label.ForeColor = Style.instance.modRefTextColor;
             form.toolTip1.SetToolTip(this, null);
             form.toolTip1.SetToolTip(label, null);
@@ -189,13 +201,17 @@ namespace ModHearth.UI
         {
             if (active)
             {
-                label.ForeColor = Style.instance.modRefTextColor;
                 label.Font = Style.modRefFont;
+                if (problem)
+                    return;
+                label.ForeColor = Style.instance.modRefTextColor;
             }
             else
             {
-                label.ForeColor = Style.instance.modRefTextFilteredColor;
                 label.Font = Style.modRefStrikeFont;
+                if (problem)
+                    return;
+                label.ForeColor = Style.instance.modRefTextFilteredColor;
             }
         }
     }
