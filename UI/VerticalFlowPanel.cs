@@ -113,9 +113,9 @@ namespace ModHearth.UI
                 }
             }
 
-            // If the point isn't in any bounds, then check if the point is in form bounds, but below any visible mod.
+            // If the point isn't in any bounds, then check if the point is in form bounds, but below any visible mod. Add 10 to give some wiggle room.
             // This makes it so that if the list is short, dragging to the empty area of the panel adds the mod on the end.
-            if (pos.Y < Height && pos.X > 0 && pos.X < Width && pos.Y > visList[visList.Count - 1].Location.Y + 10)
+            if (pos.Y < Height + 10 && pos.X > 0 && pos.X < Width && pos.Y > visList[visList.Count - 1].Location.Y + 10)
             {
                 index = visList.Count;
                 return true;

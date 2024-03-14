@@ -4,12 +4,17 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Text;
+using System.IO;
 using System.Linq;
+using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace ModHearth
 {
@@ -117,7 +122,7 @@ namespace ModHearth
             FixConfig();
 
             // Find all mods and add to the lists.
-            FindAllMods();
+            FindAllModsDFHackLua();
 
             // Find DFHModpacks, and fix them if needed.
             FindModpacks();
@@ -146,6 +151,146 @@ namespace ModHearth
             Process.Start(processInfo);
         }
 
+        //??
+        public ModHearthConfig GetConfig()
+        {
+            return config;
+        }
+
+        private void FindAllModsDFHackLua()
+        {
+            // If game not running, prompt user to run it and force restart.
+            if (!DwarfFortressRunning())
+            {
+                // Only restart if user hits OK.
+                Console.WriteLine("DF not running");
+                DialogResult result = MessageBox.Show("Please launch dwarf fortress and navigate to the world creation screen. Application will restart when done.", "DF not running", MessageBoxButtons.OKCancel);
+
+                if (result == DialogResult.OK)
+                    Process.Start(Application.ExecutablePath);
+
+                // More forceful shutdown.
+                MainForm.instance.selfClosing = true;
+                Application.Exit();
+                Environment.Exit(0);
+
+                // Needed?
+                return;
+            }
+
+            // Initialize relevant variables.
+            modrefMap = new Dictionary<string, ModReference>();
+            modPool = new HashSet<DFHMod>();
+
+            // Get all mod folders.
+            Console.WriteLine("Finding all mods... ");
+
+            HashSet<Dictionary<string, string>> modData = GetModMemoryData();
+
+            foreach (Dictionary<string, string> modDataEntry in modData)
+            {
+                // Directory correction.
+                modDataEntry["src_dir"] = Path.Combine(config.DFFolderPath, modDataEntry["src_dir"]);
+
+                // Mod setup and registry.
+                ModReference modRef = new ModReference(modDataEntry);
+                string key = modRef.DFHackCompatibleString();
+                Console.WriteLine($"   Mod registered: {modRef.name}.");
+                modrefMap.Add(key, modRef);
+                modPool.Add(modRef.ToDFHMod());
+            }
+        }
+
+        // Output a dictionary, that given a modID gets the true version.
+        private HashSet<Dictionary<string, string>> GetModMemoryData()
+        {
+            HashSet<Dictionary<string, string>> modData = new HashSet<Dictionary<string, string>>();
+
+            // Load raw memory data string, and parse it with regex
+            string RawModData = LoadModMemoryData();
+
+            if (RawModData.StartsWith('0'))
+            {
+                // Only restart if user hits OK.        
+                DialogResult result = MessageBox.Show("Please navigate to the world creation screen. Application will restart when done.", "DF works creation screen not open.", MessageBoxButtons.OKCancel);
+
+                if (result == DialogResult.OK)
+                    Process.Start(Application.ExecutablePath);
+
+                // More forceful shutdown.
+                MainForm.instance.selfClosing = true;
+                Application.Exit();
+                Environment.Exit(0);
+
+                // Needed?
+                return null;
+            }
+
+            // Split into mods, then loop through and extract headers.
+            string[] singleModDataPairs = RawModData.Split("___");
+            Console.WriteLine("Mods found: " + singleModDataPairs.Length);
+            foreach (string simpleModDataPair in singleModDataPairs)
+            {
+                // Split into headers and non headers. Deserialize headers into dict.
+                string[] pairArr = simpleModDataPair.Split("===");
+                string[] nonHeaders = pairArr[0].Split('|');
+                Dictionary<string, string> headers = JsonSerializer.Deserialize<Dictionary<string, string>>(pairArr[1]);
+                modData.Add(headers);
+                Console.WriteLine("   Mod Found: " + headers["name"]);
+
+                // To see which headers there are to choose from.
+                //foreach (string k in headers.Keys)
+                    //Console.WriteLine($"header found. k: {k}, v: {headers[k]}");
+
+            }
+
+            return modData;
+        }
+
+        // Use dfhack-run.exe and lua to get raw mod data.
+        private string LoadModMemoryData()
+        {
+            // Get path to lua script.
+            string luaPath = Path.Combine(Environment.CurrentDirectory, "GetModMemoryData.lua");
+
+            // Set up dfhack process.
+            ProcessStartInfo processStartInfo = new ProcessStartInfo
+            {
+                FileName = Path.Combine(config.DFFolderPath, "dfhack-run.exe"),
+                WorkingDirectory = config.DFFolderPath,
+                Arguments = $"lua -f \"{luaPath}\"",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            // Start dfhack process.
+            Process process = new Process
+            {
+                StartInfo = processStartInfo
+            };
+            process.Start();
+
+            // Get output string.
+            string output = process.StandardOutput.ReadToEnd();
+
+            // Wait for the process to exit.
+            process.WaitForExit();
+
+            //Console.WriteLine("output:\n" + output);
+
+            return output;
+        }
+
+        // Check if DF is running.
+        public bool DwarfFortressRunning()
+        {
+            foreach(Process process in Process.GetProcesses())
+                if (process.ProcessName.Equals("Dwarf Fortress"))
+                    return true;
+            return false;
+        }
+
         // Alter the current modpack with enabledMods and save modpack list to dfhack file.
         public void SaveCurrentModpack()
         {
@@ -157,6 +302,8 @@ namespace ModHearth
         // Save the DFHModpack list to file.
         public void SaveAllModpacks()
         {
+            Console.WriteLine("Modlists saved.");
+
             // Get the path, serialize with right options, and write to file.
             string dfHackModlistPath = Path.Combine(config.DFFolderPath, @"dfhack-config\mod-manager.json");
             JsonSerializerOptions options = new JsonSerializerOptions
@@ -195,6 +342,7 @@ namespace ModHearth
         {
             // Convert mod to DFHMod.
             DFHMod dfm = mod.ToDFHMod();
+            Console.WriteLine($"Mod '{dfm.id}' moved from " + (sourceLeft ? "dis" : "en") + "abled to " + (destinationLeft ? "dis" : "en") + "abled.");
 
             if (sourceLeft && destinationLeft)
             {
@@ -209,6 +357,12 @@ namespace ModHearth
                 // If the mod is removed from the old index, and it would shift the whole list down, account for that.
                 if (oldIndex < newIndex)
                     newIndex--;
+
+                if (oldIndex < 0)
+                {
+                    Console.WriteLine("Clicking too fast, attempted to disable same mod twice.");
+                    return;
+                }
 
                 // Remove from old index and insert at the new index (or add if at end of list).
                 enabledMods.RemoveAt(oldIndex);
@@ -251,7 +405,7 @@ namespace ModHearth
             // Add all enabled mod IDs to unscanned.
             foreach (DFHMod dfm in enabledMods)
             {
-                unscannedModIDs.Add(dfm.id);
+                unscannedModIDs.Add(dfm.id.ToLower());
             }
 
             // Loop through enabled mods, doing a mock load.
@@ -264,19 +418,19 @@ namespace ModHearth
                 if (currentMod.problematic)
                 {
                     foreach (string beforeID in currentMod.require_before_me)
-                        if (!scannedModIDs.Contains(beforeID))
+                        if (!scannedModIDs.Contains(beforeID.ToLower()))
                         {
                             modproblems.Add(new ModProblem(currentDFM.id, beforeID, ModProblem.ProblemType.MissingBefore));
                             //Console.WriteLine("Problem found: missing before mod with ID: " + beforeID + " mod needing is: " + currentDFM.id);
                         }
                     foreach (string afterID in currentMod.require_after_me)
-                        if (!unscannedModIDs.Contains(afterID))
+                        if (!unscannedModIDs.Contains(afterID.ToLower()))
                         {
                             modproblems.Add(new ModProblem(currentDFM.id, afterID, ModProblem.ProblemType.MissingAfter));
                             //Console.WriteLine("Problem found: missing after mod with ID: " + afterID + " mod needing is: " + currentDFM.id);
                         }
                     foreach (string conflictID in currentMod.conflicts_with)
-                        if (scannedModIDs.Contains(conflictID) || unscannedModIDs.Contains(conflictID))
+                        if (scannedModIDs.Contains(conflictID.ToLower()) || unscannedModIDs.Contains(conflictID.ToLower()) )
                         {
                             modproblems.Add(new ModProblem(currentDFM.id, conflictID, ModProblem.ProblemType.ConflictPresent));
                             //Console.WriteLine("Problem found: conflict present mod with ID: " + conflictID + " mod needing is: " + currentDFM.id);
@@ -284,78 +438,12 @@ namespace ModHearth
                 }
 
                 // Move to scanned.
-                scannedModIDs.Add(currentDFM.id);
-                unscannedModIDs.Remove(currentDFM.id);
+                scannedModIDs.Add(currentDFM.id.ToLower());
+                unscannedModIDs.Remove(currentDFM.id.ToLower());
             }
         }
 
         #region initialization file stuff
-        // Find all mods based on mods folder.
-        private void FindAllMods()
-        {
-            // Initialize relevant variables.
-            modrefMap = new Dictionary<string, ModReference>();
-            modPool = new HashSet<DFHMod>();
-
-            // Get all mod folders.
-            Console.WriteLine("Finding all mods... ");
-            List<string> modFolders = new List<string>(Directory.GetDirectories(config.ModsPath));
-
-            // Add vanilla mod folders, excluding obvious non-mod folders.
-            string vanillaDataPath = Path.Combine(config.DFFolderPath, @"data\vanilla");
-            foreach (string vanillaModDir in Directory.GetDirectories(vanillaDataPath))
-            {
-                modFolders.Add(vanillaModDir);
-            }
-
-            // Remove known non-mod folders.
-            List<string> temp = new List<string>();
-            foreach (string modPath in modFolders)
-            {
-                // Three vanilla folders.
-                if (modPath.Contains("mod_upload") || modPath.Contains("examples and notes") || modPath.Contains("interaction examples"))
-                    continue;
-                temp.Add(modPath);
-
-            }
-            modFolders = temp;
-
-            // Load all the mods.
-            foreach (string modFolder in modFolders)
-            {
-                // Check if file exists, handle accordingly.
-                string infoPath = Path.Combine(modFolder, "info.txt");
-                if (File.Exists(infoPath))
-                {
-                    // Read the file and attempt to create valid ModReference from it.
-                    string modInfo = File.ReadAllText(infoPath);
-                    ModReference modRef = new ModReference(modInfo, modFolder);
-                    if (!modRef.failed)
-                    {
-                        // ModRef was successful, so add it to the lists.
-                        string key = modRef.DFHackCompatibleString();
-                        Console.WriteLine($"   Valid mod found: {modRef.name}.");
-                        modrefMap.Add(key, modRef);
-                        modPool.Add(modRef.ToDFHMod());
-                    }
-                    else
-                    {
-                        // #TODO: Broken mod popup, asking if deletion is needed would be good.
-                        // ModRef failed.
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"   Broken mod found. path:{modFolder}");
-                        Console.ForegroundColor = ConsoleColor.White;
-                    }
-                }
-                else
-                {
-                    // #TODO: Broken mod popup, asking if deletion is needed would be good.
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"   Broken mod found. No info file. path:{modFolder}");
-                    Console.ForegroundColor = ConsoleColor.White;
-                }
-            }
-        }
 
         // Find modpacks from dfhack mod-manager config file.
         private void FindModpacks()
@@ -436,7 +524,7 @@ namespace ModHearth
             // Pop up a message notifying the user that the missing mods have been removed.
             if(modMissing)
             {
-                LocationMessageBox.Show(missingMessage, "Missing Mods", MessageBoxButtons.OK);
+                MessageBox.Show(missingMessage, "Missing Mods", MessageBoxButtons.OK);
             }
         }
 

@@ -9,6 +9,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text;
@@ -51,10 +52,11 @@ namespace ModHearth
         private int lastStyle;
 
         // For when the form is restarting itself.
-        private bool selfClosing;
+        public bool selfClosing;
 
         // The one and only instance of this form, for other classes to reference.
         public static MainForm instance;
+
         public MainForm()
         {
             // Set global instance.
@@ -93,7 +95,6 @@ namespace ModHearth
             // Fix resizing issues.
             this.Resize += ResizeFixes;
 
-            // Do not self close by default.
             selfClosing = false;
         }
 
@@ -104,6 +105,7 @@ namespace ModHearth
             rightModlistPanel.FixChildrenStyle();
         }
 
+        // Check if they really want to close.
         private void CloseConfirmation(object sender, FormClosingEventArgs e)
         {
             // If this form is closing itself, do not interfere.
@@ -156,7 +158,7 @@ namespace ModHearth
             leftSearchBox.BorderStyle = BorderStyle.None;
             rightSearchBox.BorderStyle = BorderStyle.None;
 
-
+            playGameButton.Enabled = false;
         }
 
         private void PostLoadFix(object sender, EventArgs e)
@@ -326,6 +328,19 @@ namespace ModHearth
 
         }
 
+        // Given a double clicked modref, do a transfer to the last index.
+        public void ModRefDoubleClicked(ModRefPanel modrefPanel)
+        {
+            bool leftSource = modrefPanel.Parent == leftModlistPanel;
+
+            // Changes have been made.
+            SetAndMarkChanges(true);
+
+            // Move mod appropriately and refresh.
+            manager.MoveMod(modrefPanel.modref, manager.enabledMods.Count, leftSource, !leftSource);
+            RefreshModlistPanels();
+        }
+
         private void SetModPictureBoxImage(Image originalImage)
         {
             // Calculate scale factor and scale image by it.
@@ -395,8 +410,10 @@ namespace ModHearth
             rightModlistPanel.ColorProblemMods(manager.modproblems);
 
             // Force refrash search boxes.
-            leftSearchBox.Text = leftSearchBox.Text + "";
-            rightSearchBox.Text = rightSearchBox.Text + "";
+            leftSearchBox_TextChanged("", new EventArgs());
+            rightSearchBox_TextChanged("", new EventArgs());
+            //leftSearchBox.Text = leftSearchBox.Text + "";
+            //rightSearchBox.Text = rightSearchBox.Text + "";
         }
 
         // Highlight the panel at and before index, if they exist.
@@ -509,6 +526,8 @@ namespace ModHearth
 
         private void UndoListChanges()
         {
+            Console.WriteLine("Undid changes.");
+
             // Set the modpack to lastIndex (loads modlist from modpack, undoing changes)
             SetAndRefreshModpack(lastIndex);
 
@@ -740,8 +759,8 @@ namespace ModHearth
         {
             leftModlistPanel.SearchFilter(leftSearchBox.Text.ToLower());
         }
-        // On search change, notify panel.
 
+        // On search change, notify panel.
         private void rightSearchBox_TextChanged(object sender, EventArgs e)
         {
             rightModlistPanel.SearchFilter(rightSearchBox.Text.ToLower());
@@ -776,7 +795,7 @@ namespace ModHearth
         // If the theme index was changed, save the change to manager config file, and fix our style.
         private void themeComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            Console.WriteLine($"style change from {lastStyle} to {themeComboBox.SelectedIndex}");
+            Console.WriteLine($"Style change from {lastStyle} to {themeComboBox.SelectedIndex}");
 
             // Do nothing if style hasn't changed.
             if (themeComboBox.SelectedIndex == lastStyle)
